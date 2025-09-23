@@ -1,248 +1,321 @@
+import { DocumentType } from "../state/types";
 
-// FIX: Changed the prompt from a template literal string to a native JavaScript object.
-// This resolves strange parsing errors and allows for better type safety when used.
+// --- SHARED CONFIGURATIONS FOR PROMPT OPTIMIZATION ---
+
+const PURE_MARKDOWN_FORMATTING = {
+    "finalOutputFormat": "Pure Markdown",
+    "description": "Output MUST be in clean, standard Markdown. Use hashes for headings, asterisks for lists, and Markdown table syntax. No HTML tags are permitted. The document must be structured for RTL reading.",
+    "language": "Arabic"
+};
+
+const SHARED_CORE_DIRECTIVES = [
+  "ABSOLUTE RULE - NO H1 TITLE: The application handles the title. Your response MUST begin directly with the preamble paragraph. The generated `projectName` MUST be naturally integrated within the preamble text, NOT used as a standalone H1 title.",
+  "Absolute Uniqueness & Auto-Population: All variables (names, dates, figures, etc.) MUST be uniquely auto-populated. No placeholders like `[text]` are allowed.",
+  "Final Output is Markdown Document Only: The entire response must be only the complete document in clean Markdown. Do not wrap in JSON, code fences, or any other metadata."
+];
+
+const SHARED_SIGNATURE_BLOCK_INSTRUCTION_MARKDOWN_TABLE = {
+  "section": "Final Signature Block",
+  "instruction": "At the very end, generate a '### التوقيعات' heading with a two-column Markdown table. Left column for 'الطرف الأول', right for 'الطرف الثاني'. Each cell must contain the party's full legal name, representative's name, title, and signature line. **CRITICAL:** The entire signature line, including the label 'التوقيع:' and the name, MUST be wrapped in single asterisks (*التوقيع: Full Name*). The name after 'الاسم:' MUST be plain text. Structure:\n\n### التوقيعات\n\n| الطرف الأول | الطرف الثاني |\n| :--- | :--- |\n| **الاسم:** [Full Name 1] | **الاسم:** [Full Name 2] |\n| **المنصب:** [Title 1] | **المنصب:** [Title 2] |\n| *التوقيع: [Full Name 1]* | *التوقيع: [Full Name 2]* |"
+};
+
+// --- MAIN GENERATION PROMPTS ---
+
 export const CONTRACT_GENERATION_PROMPT = {
   "promptDetails": {
-    "title": "Deep Synthesis Dynamic Contract Generator with Full Annex Generation (Saudi Arabia)",
-    "version": "14.0",
-    "objective": "To programmatically generate a dataset of 125,000 fully synthetic, unique, and complex Arabic contracts. Each contract must be at least 5 pages long, professionally formatted in a right-to-left (RTL) document structure using Markdown with styled HTML tables, and include fully auto-populated, unique variables and annexes."
+    "title": "Deep Synthesis Dynamic Contract Generator (Saudi Arabia)",
+    "version": "16.2 - Markdown Only (Optimized)",
+    "objective": "Generate a unique, complex, multi-page Arabic contract in Pure Markdown with auto-populated variables and annexes."
   },
   "instructions": {
-    "roleAndContext": "You are an advanced legal AI specializing in the deep synthesis of complex Saudi Arabian contracts. Your task is to act as a 'Dynamic Contract Generator'. You will receive this JSON prompt and generate a single, complete, and unique contract as a clean, right-to-left formatted document.",
+    "roleAndContext": "Act as a legal AI specializing in deep synthesis of Saudi Arabian contracts. Generate a single, complete contract in clean, RTL-formatted Pure Markdown.",
     "coreDirectives": [
-      "**Absolute Uniqueness & Auto-Population Required:** Every single variable and placeholder field within the final contract text, including all names, project titles, financial figures, dates (Hijri and Gregorian), and signature blocks, MUST be fully and uniquely auto-populated by you. No square brackets or placeholders [like this] should remain in the final output.",
-      "**Mandatory Length and Detail:** The generated contract's content must be substantial enough to equate to a minimum of 5 standard pages. This is achieved through a deeply detailed 'Scope of Work' and fully generated Annexes.",
-      "**CRITICAL TABLE RULE: All Tables Must Be Fully Populated.** It is absolutely mandatory that every single table generated in the contract, including those in the main body and all annexes, is completely filled with unique, plausible, and contextually relevant data. No table cell (`<td>`) should be left empty or contain placeholder text. The data must be consistent with the contract's scope and financial details.",
-      "**Full Annex Generation:** Do not just describe the annexes. You must generate the actual content of the mandatory annexes (A, B, C, D) as detailed, structured documents within the main contract output.",
-      "**RTL Document Structure:** The entire final output must be wrapped in a single HTML container `<div dir='rtl'>...</div>` to ensure proper right-to-left text alignment for Arabic. The content inside this container will be Markdown with embedded HTML for tables.",
-      "**Final Output is Document Only:** Your entire response to this prompt must be the single `<div>` block containing the complete contract. Do not wrap the output in a JSON object or include any other metadata outside of this container.",
-      "**Self-Correction Mandate:** Before finalizing the output, you must perform a self-correction pass to verify that every single table cell (`<td>`) in the entire document contains meaningful, context-specific data. Outputting empty or placeholder-filled cells is a failure to meet the prompt's requirements."
+      ...SHARED_CORE_DIRECTIVES,
+      "Mandatory Length and Detail: Contract content must equate to a minimum of 5 standard pages, achieved through a detailed 'Scope of Work' and fully generated Annexes.",
+      "CRITICAL TABLE RULE: All tables MUST be fully populated with unique, plausible data using Markdown syntax. No empty cells.",
+      "Self-Correction Mandate: Before output, verify all tables are filled with meaningful, context-specific data."
     ]
   },
    "selfChecklist": {
-    "description": "Final mandatory checks to perform before generating the response. Failure to comply with these will result in an invalid output.",
     "rules": [
-      "1. Any contract output containing an empty <td> is considered invalid and must be re-generated with complete data.",
-      "2. Scan all HTML tables. Is there a single empty `<td>` element? If yes, the output is invalid. Fill it with relevant data.",
-      "3. Does the total in Annex D exactly match the `contractValueNumeric`? If no, correct it.",
-      "4. Are all party names, dates, and project details from the preamble consistently used in the signature blocks and annexes? If no, correct it.",
-      "5. Does the output contain any placeholder text like '[...]' or 'TBD'? If yes, replace it with generated data."
+      "1. Final Check - No H1 Title: Did I add a `# Title` at the start? If yes, I MUST DELETE it. The response must start with the preamble paragraph.",
+      "2. Is the entire output in valid, clean Markdown with no HTML tags?",
+      "3. Scan all Markdown tables. Are there any empty cells? If yes, fill with relevant data.",
+      "4. Are all party names and dates consistent throughout the document, including signatures and annexes?",
+      "5. Does the output contain any placeholders like '[...]'? If yes, replace with generated data."
     ]
   },
   "knowledgeBase": {
-    "description": "A detailed, structured corpus of analyzed Saudi contract templates. This is your primary source for style, structure, and legal terminology. You will retrieve one template as a base for each generation.",
+    "description": "Corpus of analyzed Saudi contract templates. Select one as a base for generation.",
     "templates": [
-        {
-        "id": "SA_GOV_CONSULTING_01",
-        "sourceFileName": "نموذج عقد (خدمات استشارية).docx",
-        "type": "Official Government - Consulting Services",
-        "keyTerminology": ["الجهة الحكومية", "المتعاقد", "نظام المنافسات والمشتريات الحكومية"],
-        "structuralNotes": "Follows the official two-part government format: a short 'Basic Document' (وثيقة العقد الأساسية) followed by extensive multi-section 'Conditions' (شروط العقد).",
-        "keyClauses": [
-          {"clauseName": "المحتوى المحلي", "description": "Mandatory clause referencing the Local Content and SMEs Authority regulations, requiring preference for national products."},
-          {"clauseName": "حقوق الملكية الفكرية", "description": "Specifies that all IP generated under the contract becomes the exclusive property of the Government Entity."},
-          {"clauseName": "تعارض المصالح", "description": "Requires the contractor to avoid and disclose any potential conflicts of interest."},
-          {"clauseName": "السرية وحماية المعلومات", "description": "Imposes strict confidentiality obligations on the contractor regarding all project and government data."}
-        ],
-        "uniqueMechanisms": "Standard direct-award contract for a defined scope of services."
-      },
-      {
-        "id": "SA_GOV_GENERAL_SERVICES_02",
-        "sourceFileName": "نموذج عقد (خدمات عام).docx",
-        "type": "Official Government - General Services",
-        "keyTerminology": ["الجهة الحكومية", "المتعاقد"],
-        "structuralNotes": "Follows the official two-part government format.",
-        "keyClauses": [
-          {"clauseName": "فريق العمل", "description": "Specifies requirements for contractor's personnel."},
-          {"clauseName": "الأصناف والمواد", "description": "Defines the standards and specifications for any materials used in delivering the service."},
-          {"clauseName": "المعدات", "description": "Outlines the requirements for equipment to be used by the contractor."}
-        ],
-        "uniqueMechanisms": "Standard direct-award contract suitable for non-consulting services like cleaning, security, or general maintenance."
-      },
-      {
-        "id": "SA_GOV_MILITARY_SUPPLY_03",
-        "sourceFileName": "نموذج عقد التوريد عسكري.docx",
-        "type": "Official Government - Military Supply",
-        "keyTerminology": ["الجهة الحكومية", "المتعاقد", "الهيئة العامة للصناعات العسكرية"],
-        "structuralNotes": "A highly specialized two-part government procurement contract.",
-        "keyClauses": [
-          {"clauseName": "رخص التصدير", "description": "Makes the contractor responsible for obtaining all necessary export licenses from the country of origin."},
-          {"clauseName": "المشاركة الصناعية", "description": "Mandates an industrial participation agreement with the General Authority for Military Industries (GAMI) to promote local industry."},
-          {"clauseName": "التعبئة والتغليف والتوثيق", "description": "Contains highly specific requirements for military-grade packaging, labeling, and shipping documentation."}
-        ],
-        "uniqueMechanisms": "Features a mandatory multi-stage testing and acceptance protocol: Factory Acceptance Tests (FAT), Site Acceptance Tests (SAT), and User Acceptance Tests (UAT), each being a prerequisite for the next stage."
-      },
-      {
-        "id": "PVT_COMMERCIAL_SUPPLY_04",
-        "sourceFileName": "نموذج-عقد-توريد-أثاث-مكتبي-موقع-النموذج.docx",
-        "type": "Simple Private Commercial - Goods Supply",
-        "keyTerminology": ["المشتري", "البائع"],
-        "structuralNotes": "Simple, linear contract structure without complex sections. Suitable for basic B2B sales.",
-        "keyClauses": [
-          {"clauseName": "سعر التوريد والدفع", "description": "Basic clause outlining total price and payment terms (e.g., advance payment, final payment)."},
-          {"clauseName": "التسليم", "description": "Specifies delivery location and dates."},
-          {"clauseName": "الضمان والصيانة", "description": "Provides a basic warranty period for the supplied goods."}
-        ],
-        "uniqueMechanisms": "None, it's a straightforward sales contract."
-      },
-      {
-        "id": "SA_GOV_CONSTRUCTION_GENERAL_11",
-        "sourceFileName": "نموذج عقد (إنشاءات عامة).docx",
-        "type": "Official Government - General Construction",
-        "keyTerminology": ["الجهة الحكومية", "المقاول", "المهندس"],
-        "structuralNotes": "The standard official template for general building construction projects, following the two-part government format.",
-        "keyClauses": [
-          {"clauseName": "تسليم الموقع", "description": "Procedures for the official handover of the construction site to the contractor."},
-          {"clauseName": "الاستلام الابتدائي والنهائي", "description": "A two-stage acceptance process: preliminary acceptance to start the defects liability period, and final acceptance after its completion."},
-          {"clauseName": "المسؤولية عن العيوب", "description": "Defines the contractor's responsibility to remedy any defects that appear during the defect liability period."},
-          {"clauseName": "التأمين", "description": "Requires specific insurance policies, typically Contractor's All-Risk (CAR) and Professional Indemnity."}
-        ],
-        "uniqueMechanisms": "Relies heavily on the role of 'The Engineer' (المهندس) as the government's representative for technical supervision and approvals."
-      },
-      {
-        "id": "SA_GOV_OM_12",
-        "sourceFileName": "نموذج عقد (التشغيل والصيانة) (1).docx",
-        "type": "Official Government - Operation & Maintenance",
-        "keyTerminology": ["الجهة الحكومية", "المتعاقد"],
-        "structuralNotes": "Official two-part government contract tailored for long-term O&M services.",
-        "keyClauses": [
-          {"clauseName": "مؤشرات الأداء الرئيسية (KPIs)", "description": "Defines the measurable metrics used to evaluate the contractor's performance."},
-          {"clauseName": "اتفاقية مستوى الخدمة (SLA)", "description": "Specifies the required service levels, response times, and uptime for the maintained assets."},
-          {"clauseName": "جدول الصيانة الوقائية", "description": "Requires the contractor to submit and adhere to a detailed schedule for preventive maintenance activities."}
-        ],
-        "uniqueMechanisms": "Payment is often tied directly to the achievement of KPIs defined in the SLA, with penalties for non-compliance."
-      },
-      {
-        "id": "SA_FRAMEWORK_SUPPLY_07",
-        "sourceFileName": "نموذج اتفاقية إطارية (توريد عام).docx",
-        "type": "Framework Agreement - General Supply",
-        "keyTerminology": ["الجهة الحكومية", "المتعاقد"],
-        "structuralNotes": "An official government agreement that establishes terms for future purchases, not a contract for a specific one-time purchase.",
-        "keyClauses": [
-          {"clauseName": "مدة الاتفاقية", "description": "Defines the period during which the framework is valid (e.g., 3 years)."},
-          {"clauseName": "الحد الأعلى للاتفاقية", "description": "Specifies the maximum total value of all purchase orders that can be issued under the agreement."}
-        ],
-        "uniqueMechanisms": "The core mechanism is that no goods are procured upon signing. Instead, legally binding 'Purchase Orders' (أوامر الشراء) are issued against the pre-agreed prices and terms as needed."
-      },
-      {
-        "id": "SA_GOV_ENG_SUPERVISION_13",
-        "sourceFileName": "نموذج عقد (الخدمات الهندسية – إشراف).docx",
-        "type": "Official Government - Engineering Supervision Services",
-        "keyTerminology": ["الجهة الحكومية", "الاستشاري"],
-        "structuralNotes": "Official two-part government format for specialized professional services.",
-        "keyClauses": [
-          {"clauseName": "صلاحيات ومسؤوليات الاستشاري", "description": "Defines the consultant's authority to inspect works, approve materials, and issue instructions to the construction contractor on behalf of the government."},
-          {"clauseName": "المسؤولية المهنية", "description": "Specifies the consultant's liability for professional negligence (standard of care)."}
-        ],
-        "uniqueMechanisms": "The consultant acts as an intermediary and technical authority between the government client and the construction contractor."
-      }
+      {"id": "SA_GOV_CONSULTING_01", "type": "Official Government - Consulting Services", "keyClauses": ["المحتوى المحلي", "حقوق الملكية الفكرية", "تعارض المصالح", "السرية وحماية المعلومات"]},
+      {"id": "SA_GOV_GENERAL_SERVICES_02", "type": "Official Government - General Services", "keyClauses": ["فريق العمل", "الأصناف والمواد", "المعدات"]},
+      {"id": "SA_GOV_MILITARY_SUPPLY_03", "type": "Official Government - Military Supply", "keyClauses": ["رخص التصدير", "المشاركة الصناعية", "التعبئة والتغليف والتوثيق"]},
+      {"id": "PVT_COMMERCIAL_SUPPLY_04", "type": "Simple Private Commercial - Goods Supply", "keyClauses": ["سعر التوريد والدفع", "التسليم", "الضمان والصيانة"]},
+      {"id": "SA_GOV_CONSTRUCTION_GENERAL_11", "type": "Official Government - General Construction", "keyClauses": ["تسليم الموقع", "الاستلام الابتدائي والنهائي", "المسؤولية عن العيوب", "التأمين"]},
+      {"id": "SA_GOV_OM_12", "type": "Official Government - Operation & Maintenance", "keyClauses": ["مؤشرات الأداء الرئيسية (KPIs)", "اتفاقية مستوى الخدمة (SLA)", "جدول الصيانة الوقائية"]},
+      {"id": "SA_FRAMEWORK_SUPPLY_07", "type": "Framework Agreement - General Supply", "keyClauses": ["مدة الاتفاقية", "الحد الأعلى للاتفاقية"]},
+      {"id": "SA_GOV_ENG_SUPERVISION_13", "type": "Official Government - Engineering Supervision Services", "keyClauses": ["صلاحيات ومسؤوليات الاستشاري", "المسؤولية المهنية"]}
     ]
   },
   "dynamicVariableGeneration": {
-    "description": "Auto-generate all variables to be 100% unique for each contract generation.",
     "steps": [
-      {
-        "step": 1,
-        "action": "Generate Scenario & Base",
-        "instruction": "Randomly select a `baseTemplateId` from the knowledgeBase. Based on the selection, generate a plausible, unique, one-sentence `contractScenario`."
-      },
-      {
-        "step": 2,
-        "action": "Generate Unique Parties",
-        "instruction": "Create two unique parties with full, synthetic details (names, legal types, addresses, representative names, representative titles). Ensure names are plausible for Saudi Arabia."
-      },
-      {
-        "step": 3,
-        "action": "Generate Unique Project Details",
-        "instruction": "Create a unique, descriptive `projectName`. Generate a 2-3 sentence `projectBackground` for the preamble."
-      },
-      {
-        "step": 4,
-        "action": "Generate Dynamic Financials",
-        "instruction": "Generate a unique `contractValueNumeric` appropriate for the scenario. Generate random but plausible percentages for guarantees, advance payments, and penalties."
-      },
-      {
-        "step": 5,
-        "action": "Generate Dual-Calendar Dates & Location",
-        "instruction": "Generate a random but valid future date. This date MUST be represented in two corresponding formats: `contractDateHijri` (e.g., '25 ربيع الآخر 1447هـ') and `contractDateGregorian` (e.g., '17 September 2025'). Generate the `dayOfWeek` (e.g., 'يوم الأربعاء'). Select a random major city in Saudi Arabia for `signingLocation`."
-      },
-      {
-        "step": 6,
-        "action": "Generate Dynamic Styling Variable",
-        "instruction": "Generate a unique `tableHeaderColor` for this contract. This must be a standard HTML hex color code (e.g., '#4A90E2', '#D9534F', '#5CB85C'). Ensure the chosen color provides good contrast with white text for readability."
-      }
+      { "action": "Generate Scenario & Base", "instruction": "Randomly select a `baseTemplateId` from knowledgeBase. Generate a plausible, unique, one-sentence `contractScenario`." },
+      { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full, synthetic Saudi Arabian details (names, types, addresses, representatives)." },
+      { "action": "Generate Unique Project Details", "instruction": "Create a unique `projectName` and a 2-3 sentence `projectBackground` for the preamble." },
+      { "action": "Generate Dynamic Financials", "instruction": "Generate a unique `contractValueNumeric` and plausible percentages for guarantees, payments, and penalties." },
+      { "action": "Generate Dual-Calendar Dates & Location", "instruction": "Generate a random valid future date in Hijri and Gregorian formats, plus `dayOfWeek` and a random Saudi `signingLocation`." }
     ]
   },
   "generationLogic": {
-    "description": "Core rules for constructing the contract's content and structure to ensure detail and uniqueness.",
-    "structure": {
-      "rules": [
-        "Adopt the fundamental structure of the selected `baseTemplateId`, paying close attention to the `structuralNotes`.",
-        "Dynamically set the number of main sections between 12 and 18 for government contracts and 8-12 for commercial ones.",
-        "Synthesize unique, descriptive section titles based on the `keyClauses` of the selected template.",
-        "Logically reorder secondary sections between generations to ensure structural uniqueness."
-      ]
-    },
+    "structure": { "rules": [ "Adopt the structure of the selected `baseTemplateId`.", "Dynamically set main sections (12-18 for gov, 8-12 for commercial).", "Synthesize unique section titles based on key clauses.", "Logically reorder secondary sections for uniqueness." ] },
     "content": {
       "rules": [
-        {
-          "section": "Preamble and Signatures",
-          "instruction": "The preamble (الديباجة) must be populated with the full party details and must include the auto-generated `dayOfWeek`, `contractDateHijri`, and `contractDateGregorian`. The signature blocks must be populated with the unique representative names and titles."
-        },
-        {
-          "section": "Scope of Work (`نطاق العمل`)",
-          "instruction": "**This section is the most critical for uniqueness and length and must be a minimum of 600 words.** Synthesize a detailed scope structured into **4-6 distinct phases**. Each phase must contain a bulleted list of **5-10 specific, unique, and technically plausible activities**. Include a dedicated subsection for **'المخرجات الرئيسية' (Key Deliverables)**, listing and describing at least 5-8 unique deliverables."
-        },
-        {
-          "section": "Specifications (`المواصفات`)",
-          "instruction": "Create highly detailed, synthetic specification tables relevant to the scope, ensuring they are fully populated with data. **Use HTML table syntax.** For personnel (`فريق العمل`), the table must include: Role, Qualification, Certifications, Experience, and Responsibilities for 4-6 unique roles. Every cell in this table must be filled with specific, plausible details. The table header must be styled using the generated `tableHeaderColor`."
-        },
-        {
-          "section": "Annexes (`الملاحق`)",
-          "instruction": "**Generate the full, detailed content for the mandatory annexes (A, B, C, D) as complete documents. Per the CRITICAL TABLE RULE, all tables herein must be completely filled with detailed, unique data and generated using HTML syntax with headers styled using the `tableHeaderColor`.**\\n\\n* **الملحق (أ) - نطاق العمل والمواصفات الفنية:** Reiterate the full Scope of Work and add a subsection with 3-5 unique, specific technical requirements or standards.\\n\\n* **الملحق (ب) - الجدول الزمني التفصيلي:** Generate a detailed project timeline in an HTML table. The table must have columns for Phase, Milestone, Deliverable, Estimated Completion Date (in both Hijri and Gregorian), and Responsibilities. It must contain at least 10-15 unique milestones, with every cell populated with specific information. Each of the 10-15 milestones must have every column filled. For example, a row must contain a specific milestone description, a deliverable, a valid dual-format date, and assigned responsibilities. Do not leave any of these cells blank.\\n\\n* **الملحق (ج) - جدول الغرامات والجزاءات:** Generate a detailed HTML table of penalties with columns for Violation Type, Description, Penalty Calculation, and Max Penalty. Populate with at least 5-7 unique, specific violations, ensuring all columns are filled with realistic data. Each of the 5-7 violations must have a clear description, a specific calculation method (e.g., '1% of total contract value per day'), and a maximum penalty. Do not use generic descriptions.\\n\\n* **الملحق (د) - جدول الأسعار والدفعات:** Generate a detailed price and payment schedule in an HTML table. The line items must correspond to the Scope of Work, and the total value must equal the `contractValueNumeric`. All payment details must be fully and explicitly populated. Each payment line item must be explicitly tied to a deliverable from the Scope of Work. The payment amount must be a specific number, and the total of all payments must exactly match the `contractValueNumeric`. Do not leave payment triggers or amounts undefined.\\n\\n* **Optional Annexes:** Randomly include 1-2 optional annexes and generate a substantial paragraph or structured list outlining their content."
-        },
-        {
-          "section": "Final Signature Block",
-          "instruction": "At the very end of the contract document, you must generate a distinct signature section under a '### التوقيعات' heading. This section must be clearly formatted for two parties. The structure is non-negotiable and must be followed exactly as shown in the example. For each party, you must first state their designation and their full legal name on the same line (e.g., '**الطرف الأول:** [Full Legal Name of Party One]'). Directly below this, you must list the full name and title of their authorized representative on separate lines, followed by a line for the signature. This entire block must be populated with the unique, generated party and representative details.\\n\\n### التوقيعات\\n\\n**الطرف الأول:** [اسم الجهة الحكومية/الشركة الأولى الكامل]\\n\\n**الاسم:** [اسم الممثل المفوض الكامل]\\n\\n**المنصب:** [منصب الممثل المفوض]\\n\\n**التوقيع:** _________________________\\n\\n\\n**الطرف الثاني:** [اسم المتعاقد/الشركة الثانية الكامل]\\n\\n**الاسم:** [اسم الممثل المفوض الثاني الكامل]\\n\\n**المنصب:** [منصب الممثل المفوض الثاني]\\n\\n**التوقيع:** _________________________"
-        }
+        { "section": "Preamble and Signatures", "instruction": "Populate the preamble with full party details, dates, and an expanded `projectBackground` that naturally incorporates the unique `projectName` within its sentences. For example: '...تم إبرام هذا العقد بخصوص مشروع [projectName]...'. This MUST NOT be a standalone title." },
+        { "section": "Scope of Work (`نطاق العمل`)", "instruction": "CRITICAL: Minimum 600 words. Synthesize a detailed scope in 4-6 distinct phases, each with a bulleted list of 5-10 specific, plausible activities. Include a 'Key Deliverables' subsection listing 5-8 unique deliverables." },
+        { "section": "Specifications (`المواصفات`)", "instruction": "Create and fully populate detailed, synthetic specification tables in Markdown relevant to the scope. For personnel, table must include: Role, Qualification, Certifications, Experience, Responsibilities for 4-6 unique roles. All cells must be filled." },
+        { "section": "Annexes (`الملاحق`)", "instruction": "Generate full, detailed content for mandatory annexes (A, B, C, D) as complete documents. All tables MUST be completely filled with detailed, unique data in Markdown syntax.\n\n* الملحق (أ) - نطاق العمل والمواصفات الفنية: Reiterate full Scope of Work and add 3-5 unique technical requirements.\n\n* الملحق (ب) - الجدول الزمني التفصيلي: Generate a detailed project timeline table with columns: Phase, Milestone, Deliverable, Estimated Completion Date (Hijri/Gregorian), Responsibilities. Must contain at least 10-15 unique, fully populated milestones.\n\n* الملحق (ج) - جدول الغرامات والجزاءات: Generate a detailed penalty table with columns: Violation Type, Description, Penalty Calculation, Max Penalty. Populate with at least 5-7 unique, specific, fully populated violations.\n\n* الملحق (د) - جدول الأسعار والدفعات: Generate a detailed price/payment schedule table. Line items must match Scope of Work. Total must equal `contractValueNumeric`. All payment details must be explicitly populated.\n\n* Optional Annexes: Randomly include 1-2 optional annexes and generate substantial content for them." },
+        SHARED_SIGNATURE_BLOCK_INSTRUCTION_MARKDOWN_TABLE
       ]
     }
   },
-  "outputFormatting": {
-    "finalOutputFormat": "HTML-wrapped Markdown",
-    "description": "The final output must be a single block of text. The entire document, from the title to the final annex, must be enclosed within a single HTML `<div>` tag with right-to-left directionality (`<div dir='rtl'>...</div>`). This ensures correct formatting for the Arabic language. The content inside the div should be Markdown with embedded HTML for tables.",
-    "language": "Arabic",
-    "styling": "Inside the RTL div, strictly adhere to Markdown formatting for prose and headings (#, ##, ###). All tables MUST be generated as HTML tables. Their headers (`<thead>`) must contain table header cells (`<th>`). Each `<th>` element must be styled with the unique, randomly generated `tableHeaderColor` as its background and white text (`color: #FFFFFF;`).",
-    "finalNote": "The contract's closing statement must include both the auto-generated Hijri and Gregorian dates."
-  }
+  "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+
+export const CONTRACT_GENERATION_PROMPT_REVO = {
+    "promptDetails": {
+      "title": "Structure-Driven Dynamic Contract Generator (Revo)",
+      "version": "2.1 - Markdown Only (Optimized)",
+      "objective": "Generate a synthetic, unique Arabic contract based on a provided structural blueprint, formatted in Pure Markdown with auto-populated variables."
+    },
+    "instructions": {
+      "roleAndContext": "Act as a legal AI. You will receive a JSON prompt containing a structural blueprint. Generate a single, complete, unique contract based on that blueprint.",
+      "coreDirectives": [
+        ...SHARED_CORE_DIRECTIVES,
+        "Blueprint-Driven Generation: Use the `contractBlueprint` object as the absolute source for structure, section titles, and tone.",
+        "CRITICAL TABLE RULE: All tables MUST be fully populated with unique, plausible data using Markdown syntax. No empty cells."
+      ]
+    },
+    "selfChecklist": {
+      "rules": [
+        "1. Final Check - No H1 Title: Did I add a `# Title` at the start? If yes, I MUST DELETE it. The response must start with the preamble paragraph.",
+        "2. Is the output a complete contract in pure Markdown, NOT the JSON blueprint?",
+        "3. Are all variables auto-populated with unique data?",
+        "4. Is the contract's structure based on the `contractBlueprint`?",
+        "5. Are there any placeholders like '[...]'? If yes, replace them."
+      ]
+    },
+    "contractBlueprint": { /* Blueprint content remains unchanged as it's dynamic input */ },
+    "dynamicVariableGeneration": {
+      "steps": [
+        { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full synthetic details for a Saudi context." },
+        { "action": "Generate Unique Project Details", "instruction": "Create a unique `projectName` and `projectBackground` based on the `contractBlueprint` theme." },
+        { "action": "Generate Dynamic Financials", "instruction": "Generate a unique `contractValueNumeric` and related financial details." },
+        { "action": "Generate Dual-Calendar Dates & Location", "instruction": "Generate a valid future date (Hijri/Gregorian), `dayOfWeek`, and `signingLocation`." }
+      ]
+    },
+    "generationLogic": {
+      "structure": { "rules": [ "Construct contract using section titles from `contractBlueprint.sections`.", "Synthesize unique clause text for each section aligning with its title and `type_guess`.", "Emulate tone, style, and clause characteristics from the blueprint." ] },
+      "content": { "rules": [
+        { "section": "Preamble and Signatures", "instruction": "Populate 'مقدمة' with full auto-generated party details, dates, and project background. Generate a complete signature block at the end as a two-column Markdown table, with stylized names for 'التوقيع'." },
+        { "section": "Annexes", "instruction": "If `contractBlueprint.layout.annexes_or_exhibits` is true, generate at least two detailed annexes with fully populated Markdown tables." }
+      ] }
+    },
+    "outputFormatting": PURE_MARKDOWN_FORMATTING
 };
 
 export const CONTRACT_AMENDMENT_PROMPT = {
   "promptDetails": {
-    "title": "Intelligent Contract Amendment Generator (Saudi Arabia)",
-    "version": "2.0",
-    "objective": "To intelligently amend an existing Arabic contract, producing a new version with plausible, logical changes while preserving the core structure and intent."
+    "title": "Intelligent Contract Amendment Generator",
+    "version": "4.1 - Markdown Only (Optimized)",
+    "objective": "Intelligently amend an existing Arabic contract, simulating a real negotiation and outputting in Pure Markdown."
   },
   "instructions": {
-    "roleAndContext": "You are an advanced legal AI acting as a professional legal reviewer. You will be given the full text of an existing Saudi Arabian contract. Your task is to analyze it and generate a complete, amended version of that contract.",
+    "roleAndContext": "Act as legal counsel for 'الطرف الثاني'. You will be given a contract in Markdown. Generate a complete, amended version with 2-4 strategic changes beneficial to your client.",
     "coreDirectives": [
-      "**Analyze and Amend:** Read the provided contract carefully. Introduce 2-4 logical and meaningful amendments. Examples of good amendments include: adjusting a project deadline in the timeline, modifying a financial figure in the payment schedule (and ensuring the total still adds up), updating a technical specification, or clarifying a clause's wording. Avoid trivial changes.",
-      "**Preserve Core Identity:** Do not change the fundamental details like the names of the contracting parties, the project's core objective, or the legal framework. The amended document must clearly be a new version of the original, not a completely new contract.",
-      "**Maintain Format and Integrity:** The amended contract must be returned in the exact same format as the original: a single `<div dir='rtl'>...</div>` container with Markdown and styled HTML tables. Ensure all internal consistency (like financial totals) is maintained after your amendments.",
-      "**Final Output is Document Only:** Your entire response must be the single `<div>` block containing the complete, amended contract. Do not include any commentary, analysis, or list of changes you made."
+      "Simulate Negotiation: Introduce 2-4 strategic, plausible amendments beneficial to Party Two (e.g., adjust liability, payment terms, deadlines, scope).",
+      "Preserve Core Identity: Do not change fundamental party names or the project's core objective. The document must be a clear version of the original.",
+      "Maintain Internal Consistency: Ensure financial totals and other details are consistent after amendments. Preserve signature block format.",
+      "Final Output is Markdown Document Only: Your entire response must be the complete, amended contract in clean Markdown. No commentary or list of changes."
     ]
   },
-  "input": {
-    "description": "The user will provide the full HTML/Markdown text of the original contract. This will be injected into the `contents` field of the API call.",
-    "variableName": "originalContractText"
-  }
+  "input": { "variableName": "originalContractText" },
+  "outputFormatting": PURE_MARKDOWN_FORMATTING
 };
 
-export const DYNAMIC_FORMATTING_INSTRUCTIONS = [
-  "**Dynamic Style Directive:** All `<h2>` headings must be followed by a horizontal rule (`---`) for visual separation.",
-  "**Dynamic Style Directive:** In the 'Scope of Work' section, all bulleted lists (`<ul>`) must use asterisks (`*`) as bullet points.",
-  "**Dynamic Style Directive:** In all Annexes, render all `<h3>` headings in italics by wrapping them in single asterisks (e.g., `*### عنوان الملحق*`).",
-  "**Dynamic Style Directive:** The final signature block (under '### التوقيعات') must be enclosed within a Markdown blockquote (by prefixing each line with `> `).",
-  "**Dynamic Style Directive:** All dates, both Hijri and Gregorian, appearing anywhere in the document (preamble, annexes, closing) must be rendered in bold text.",
-  "**Dynamic Style Directive:** For the 'Key Deliverables' (`المخرجات الرئيسية`) subsection, use a numbered list (`<ol>`) instead of a bulleted list (`<ul>`)."
-];
+export const CONTRACT_FINALIZATION_PROMPT = {
+  "promptDetails": {
+    "title": "Legal Document Finalization & Re-formatting AI",
+    "version": "3.2 - Markdown Only (Optimized)",
+    "objective": "Take a pre-cleaned draft of an Arabic legal document and produce a perfectly clean, final version with corrected numbering and formatting in Pure Markdown."
+  },
+  "instructions": {
+    "roleAndContext": "You are a document finalization engine. You will be given a draft contract where changes have already been merged. Your SOLE task is to produce a 100% clean, final version ready for signature.",
+    "coreDirectives": [
+      "PRIMARY GOAL - RE-NUMBER & RE-FORMAT: Your most important task is to scan the entire document and correct all clause, section, and list numbering to be perfectly sequential. Fix any awkward spacing or formatting issues that may have resulted from automated text merging.",
+      "MAINTAIN INTEGRITY: Do not add new legal content or change the existing text. Your role is purely structural and cosmetic.",
+      "FALLBACK CLEANUP: As a safety measure, aggressively remove any lingering revision markers like `<ins>`, `<del>`, or `~~` that might have been missed. The final output must be completely clean.",
+      "Final Output is Markdown Document Only: Your entire response must be the complete, finalized contract in clean Markdown. No commentary."
+    ]
+  },
+  "input": { "variableName": "draftContractText" },
+  "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+
+export const OFFICIAL_LETTER_GENERATION_PROMPT = {
+  "promptDetails": {
+    "title": "Dynamic Official Letter Generator",
+    "version": "2.4 - Markdown Only (Stylized & Robust)",
+    "objective": "Generate a unique, professional Arabic official letter in Pure Markdown with a stylized signature."
+  },
+  "instructions": {
+    "roleAndContext": "Act as an AI assistant specializing in formal Arabic correspondence. Generate a complete, unique official letter in Pure Markdown.",
+    "coreDirectives": [
+      ...SHARED_CORE_DIRECTIVES,
+      "Scenario-Driven Content: Randomly select a `scenario` from the `knowledgeBase`. The letter's content, tone, and structure must derive from this scenario.",
+      "Pure Markdown Structure: Use Markdown headings (##) for the subject, paragraphs for the body, and asterisks for lists."
+    ]
+  },
+  "selfChecklist": {
+    "rules": [
+      "1. Final Check - No H1 Title: Did I add a `# Title` at the start? If yes, I MUST DELETE it. The response must start with the preamble paragraph.",
+      "2. Is the subject line formatted correctly as `## الموضوع: ...`?",
+      "3. Are all variables (names, dates, etc.) auto-populated with unique data?"
+    ]
+  },
+  "knowledgeBase": {
+    "scenarios": [
+      { "id": "JOB_OFFER", "type": "خطاب عرض وظيفي" },
+      { "id": "PROBATION_CONFIRMATION", "type": "تأكيد إكمال الفترة التجريبية" },
+      { "id": "TERMINATION", "type": "إنهاء عقد العمل" },
+      { "id": "TRANSFER", "type": "خطاب نقل" },
+      { "id": "INFO_REQUEST", "type": "Request for Information" },
+      { "id": "MEETING_INVITE", "type": "Invitation to a Formal Meeting" }
+    ]
+  },
+  "dynamicVariableGeneration": {
+    "steps": [
+      { "action": "Generate Scenario", "instruction": "Randomly select a `scenario` from `knowledgeBase`." },
+      { "action": "Generate Unique Parties", "instruction": "Create unique Sender and Recipient with full synthetic details (org, name, title, address)." },
+      { "action": "Generate Unique Details", "instruction": "Based on scenario, generate a unique `subjectLine`, `referenceNumber`, and other necessary data (salary, dates, etc.)." },
+      { "action": "Generate Dual-Calendar Dates", "instruction": "Generate a valid date in Hijri and Gregorian formats." }
+    ]
+  },
+  "generationLogic": {
+    "structure": [
+      "Follow standard Arabic letter structure: Letterhead, Date/Ref, Recipient, Subject, Body, Closing, Signature.",
+      "Subject line MUST be a Markdown H2: `## الموضوع: [Generated Subject]`.",
+      "Body MUST be standard Markdown.",
+      {
+        "element": "Final Signature Block",
+        "instruction": "After the closing, generate the signature block. First, include the plain text name and title. Below that, generate the stylized signature. CRITICAL: The stylized signature MUST be on two separate lines with a paragraph break (a blank line) between them. The first line MUST be '*التوقيع:*' and the second line MUST be the representative's name, also wrapped in single asterisks. Follow this exact Markdown structure:\n\n**الاسم:** [Full Name]\n**المنصب:** [Title]\n\n*التوقيع:*\n\n*[Full Name]*"
+      }
+    ],
+    "scenarioBasedBodyGeneration": {
+        "if_JOB_OFFER": { "instruction": "Congratulatory opening. Present offer details (Title, Salary, etc.) in a Markdown bulleted list. Conclude with acceptance instructions." },
+        "if_PROBATION_CONFIRMATION": { "instruction": "Formally congratulate employee. State permanent employment start date. Reiterate job title. End with positive note." },
+        "if_TERMINATION": { "instruction": "Formal tone. Clearly state termination and final day. Briefly state reason if required. Provide info on final pay/property return." },
+        "if_TRANSFER": { "instruction": "Inform employee of new role/department and effective date. Explain reason and express confidence. Detail new reporting structure." },
+        "if_INFO_REQUEST": { "instruction": "State purpose in opening. Specify requested info in a Markdown bulleted list. Provide a response deadline and contact person." },
+        "if_MEETING_INVITE": { "instruction": "Open with invitation. Provide essential details: Date, Time, Location. Explain purpose and list agenda items in a Markdown bulleted list." }
+    }
+  },
+  "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+
+export const OFFICIAL_LETTER_AMENDMENT_PROMPT = {
+    "promptDetails": {
+      "title": "Intelligent Official Letter Amendment Generator",
+      "version": "3.3 - Markdown Only (Stylized & Robust)",
+      "objective": "Intelligently amend an existing Arabic official letter with plausible changes in Pure Markdown."
+    },
+    "instructions": {
+      "roleAndContext": "Act as a professional editor. You will be given a letter in Markdown. Generate a complete, amended version.",
+      "coreDirectives": [
+        "Analyze and Amend: Introduce 2-3 logical, realistic amendments (e.g., change a date, update a reference number, add a clarification).",
+        "Preserve Core Identity: Do not change the sender, recipient, or fundamental subject. It must be a clear revision.",
+        "CRITICAL SIGNATURE FORMAT: The signature block format MUST be preserved or corrected. It must show the plain text name and title, followed by the stylized signature on two separate lines separated by a blank line (paragraph break). The first stylized line must be '*التوقيع:*' and the second '*[Full Name]*', with each line individually wrapped in single asterisks. Example format:\n\n**الاسم:** [Name]\n**المنصب:** [Title]\n\n*التوقيع:*\n\n*[Name]*",
+        "Final Output is Markdown Document Only: Your response must be only the complete, amended letter in clean Markdown."
+      ]
+    },
+    "input": { "variableName": "originalLetterText" },
+    "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+  
+export const OFFICIAL_AGREEMENT_GENERATION_PROMPT = {
+    "promptDetails": {
+      "title": "Dynamic Official Agreement Generator (Saudi Arabia)",
+      "version": "3.2 - Markdown Only (Optimized)",
+      "objective": "Generate a unique, formal Arabic agreement (MOU, NDA, etc.) in Pure Markdown."
+    },
+    "instructions": {
+      "roleAndContext": "Act as a legal AI for Saudi commercial law. Generate a single, complete, unique agreement based on a random scenario in Pure Markdown.",
+      "coreDirectives": [
+        ...SHARED_CORE_DIRECTIVES,
+        "Scenario-Driven Content: Randomly select an `agreementType` from `knowledgeBase`. The agreement's structure, clauses, and tone must be based on this selection."
+      ]
+    },
+    "selfChecklist": {
+      "rules": [
+        "1. Final Check - No H1 Title: Did I add a `# Title` at the start? If yes, I MUST DELETE it. The response must start with the preamble paragraph.",
+        "2. Are all variables auto-populated with unique data, with no placeholders left?",
+        "3. Signature Styling Check: Is the signature line in the table (e.g., 'التوقيع: ...') correctly wrapped in single asterisks like *this* for styling? If not, I MUST add them."
+      ]
+    },
+    "knowledgeBase": {
+      "agreementTypes": [
+        { "id": "NDA", "arabicName": "اتفاقية عدم إفصاح" },
+        { "id": "GENERAL_SERVICE", "arabicName": "اتفاقية خدمات" },
+        { "id": "PROFIT_SHARE", "arabicName": "اتفاقية شراكة على نسبة أرباح" },
+        { "id": "MOU", "arabicName": "مذكرة تفاهم" },
+        { "id": "JV", "arabicName": "اتفاقية مشروع مشترك" },
+        { "id": "LEASE", "arabicName": "عقد إيجار تجاري" }
+      ]
+    },
+    "dynamicVariableGeneration": {
+      "steps": [
+        { "action": "Select Agreement Type", "instruction": "Randomly select an `agreementType` from `knowledgeBase`." },
+        { "action": "Generate Unique Parties", "instruction": "Create two unique parties ('الطرف الأول', 'الطرف الثاني') with full synthetic details." },
+        { "action": "Generate Unique Details", "instruction": "Based on `agreementType`, generate relevant core details (e.g., for NDA: `purposeOfDisclosure`; for Service Agreement: `scopeOfService`)." },
+        { "action": "Generate Dates & Term", "instruction": "Generate a unique `effectiveDate` (Hijri/Gregorian) and a plausible `term` for the agreement." }
+      ]
+    },
+    "generationLogic": {
+      "structure": [
+        { "element": "Preamble", "instruction": "Draft a formal preamble with `effectiveDate` (Hijri/Gregorian), immediately followed by the introduction of the two parties using the exact format on separate lines:\n**الطرف الأول:** [Full Party One Legal Name]\n**الطرف الثاني:** [Full Party Two Legal Name]" },
+        { "element": "Recitals (تمهيد)", "instruction": "Write a detailed 'تمهيد' explaining the context and purpose of the agreement, tailored to the selected `agreementType`." }
+      ],
+      "clauseGeneration": {
+        "if_NDA": { "instruction": "Generate clauses for NDA: Definition of Confidential Information, Obligations of Receiving Party, Term, No License, Governing Law." },
+        "if_GENERAL_SERVICE": { "instruction": "Generate clauses for Service Agreement: Scope, Payment, Term, Obligations, Termination, Dispute Resolution." },
+        "if_PROFIT_SHARE": { "instruction": "Generate clauses for Profit Share: Subject, Profit Percentage, Definition of Net Profit, Reporting/Audit, Distribution, Loss Management." },
+        "if_MOU": { "instruction": "Generate clauses for MOU: Objective, Areas of Cooperation, Non-Binding Obligations, Confidentiality, Non-Exclusivity, Non-Binding Nature clause." },
+        "if_JV": { "instruction": "Generate clauses for JV: Establishment, Capital/Contributions, Management, Profit/Loss Distribution, Term/Termination, Non-Compete." },
+        "if_LEASE": { "instruction": "Generate clauses for Lease: Leased Property, Term, Rent/Payment, Permitted Use, Maintenance, Insurance/Deposit." }
+      },
+      "finalElements": [ SHARED_SIGNATURE_BLOCK_INSTRUCTION_MARKDOWN_TABLE ]
+    },
+    "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+
+export const OFFICIAL_AGREEMENT_AMENDMENT_PROMPT = {
+    "promptDetails": {
+      "title": "Intelligent Official Agreement Amendment Generator",
+      "version": "4.1 - Markdown Only (Optimized)",
+      "objective": "Intelligently amend an existing Arabic agreement with plausible negotiation changes in Pure Markdown."
+    },
+    "instructions": {
+      "roleAndContext": "Act as legal counsel for 'الطرف الثاني'. Given an agreement in Markdown, analyze its type and generate an amended version with 2-3 strategic changes beneficial to your client.",
+      "coreDirectives": [
+        "Analyze and Amend with Strategy: Introduce logical amendments relevant to the agreement type that favor Party Two (e.g., for NDA, narrow 'Confidential Information'; for Service Agreement, adjust payment schedule).",
+        "Preserve Core Identity: Do not change fundamental parties or purpose. The changes should reflect a natural negotiation.",
+        "CRITICAL SIGNATURE FORMAT: The signature block format MUST be preserved or corrected. It must be a two-column Markdown table under a '### التوقيعات' heading. The entire signature line, including 'التوقيع:' and the name, must be wrapped in single asterisks (*التوقيع: Full Name*). The name after 'الاسم:' must be plain text. Verify this format is correct in the final output.",
+        "Final Output is Markdown Document Only: Your response must be only the complete, amended agreement in clean Markdown. No commentary."
+      ]
+    },
+    "input": { "variableName": "originalAgreementText" },
+    "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+
+// DEPRECATED: This is no longer needed as prompts have been simplified.
+export const DYNAMIC_FORMATTING_INSTRUCTIONS: string[] = [];

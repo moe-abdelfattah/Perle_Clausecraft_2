@@ -1,326 +1,340 @@
-import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { generateContract, generateAmendedContract } from './services/geminiService';
-import { parseContractDetails } from './utils/contractParser';
+import React, { useState, useCallback, useRef, useEffect, useMemo, useReducer } from 'react';
+import { generateDocument, generateAmendedDocument, generateFinalDocument } from './services/geminiService';
+import { sanitizeForFilename } from './utils/documentParser';
 import Header from './components/Header';
-import ProgressBar from './components/ProgressBar';
 import ContractDisplay from './components/ContractDisplay';
-import NewContractsSidebar from './components/NewContractsSidebar';
-import VersionHistorySidebar from './components/VersionHistorySidebar';
+import CategorizedSidebar from './components/DocumentsSidebar';
 import ControlBar from './components/ControlBar';
 import DownloadBar from './components/DownloadBar';
 import StatusDisplay from './components/StatusDisplay';
+import FeedbackForm from './components/FeedbackForm';
+import { appReducer, initialState } from './state/appReducer';
+import type { Action, BulkProgress, DocumentSeries, DocumentVersion, GenerationSession, DocumentType, ContractPromptType } from './state/types';
 
-// --- TYPE DEFINITIONS --- //
+// --- ULTRA-DETAILED REALISTIC PROGRESS STEPS --- //
+const getGenerationSteps = (
+    action: 'new' | 'version' | 'final',
+    docType: DocumentType
+) => {
+    if (action === 'final') {
+        return [
+            { status: "Parsing document for revision markers...", duration: 1000 },
+            { status: "Identifying all <ins> and <del> tags...", duration: 1500 },
+            { status: "Merging accepted changes into base text...", duration: 2000 },
+            { status: "Discarding all proposed deletions...", duration: 1000 },
+            { status: "Sanitizing text to remove all markers...", duration: 1500 },
+            { status: "Re-sequencing clause and paragraph numbering...", duration: 2000 },
+            { status: "Performing final formatting and typography check...", duration: 1500 },
+            { status: "Generating clean, signature-ready version...", duration: 1000 },
+        ];
+    }
+    if (action === 'version') {
+         return [
+            { status: "Parsing original document structure...", duration: 1500 },
+            { status: "Identifying key clauses and definitions...", duration: 2000 },
+            { status: "Simulating negotiation strategy for Party Two...", duration: 2500 },
+            { status: "Targeting clauses for strategic amendment...", duration: 3000 },
+            { status: "Re-drafting primary legal text...", duration: 4000 },
+            { status: "Propagating changes to dependent clauses...", duration: 2500 },
+            { status: "Verifying financial and timeline consistency...", duration: 2000 },
+            { status: "Recalculating totals and dates if necessary...", duration: 1500 },
+            { status: "Generating diff markers for review...", duration: 1000 },
+            { status: "Compiling complete amended document...", duration: 1000 },
+        ];
+    }
+    // action === 'new'
+    switch(docType) {
+        case 'contract':
+            return [
+                { status: "Initializing cognitive core...", duration: 500 },
+                { status: "Loading Saudi Arabian legal ontology...", duration: 1500 },
+                { status: "Verifying knowledge base integrity...", duration: 1000 },
+                { status: "Parsing generation scenario...", duration: 800 },
+                { status: "Instantiating party data structures...", duration: 1200 },
+                { status: "Synthesizing unique entity details (CRNs, addresses)...", duration: 1800 },
+                { status: "Cross-validating party information...", duration: 1000 },
+                { status: "Drafting preamble and recitals...", duration: 1500 },
+                { status: "Integrating project background and context...", duration: 1200 },
+                { status: "Constructing core legal framework...", duration: 1000 },
+                { status: "Analyzing 'Scope of Work' requirements...", duration: 1500 },
+                { status: "Generating primary SOW clauses and sub-clauses...", duration: 2500 },
+                { status: "Structuring phased deliverables...", duration: 1000 },
+                { status: "Defining technical specification schema...", duration: 800 },
+                { status: "Populating specification data matrix...", duration: 2000 },
+                { status: "Validating data constraints and plausibility...", duration: 1000 },
+                { status: "Generating Annex A: Scope of Work...", duration: 800 },
+                { status: "Constructing timeline schema for Annex B...", duration: 800 },
+                { status: "Populating detailed milestone data...", duration: 1500 },
+                { status: "Generating Annex B: Project Timeline...", duration: 800 },
+                { status: "Defining penalty matrix for Annex C...", duration: 800 },
+                { status: "Calculating financial penalty clauses...", duration: 1200 },
+                { status: "Generating Annex C: Penalties...", duration: 800 },
+                { status: "Composing formal signature block...", duration: 1000 },
+                { status: "Performing final consistency and integrity check...", duration: 1500 },
+                { status: "Compiling final document...", duration: 1000 },
+            ];
+        case 'agreement':
+            return [
+                { status: "Initializing agreement synthesis engine...", duration: 500 },
+                { status: "Selecting agreement type (MOU, NDA)...", duration: 1500 },
+                { status: "Instantiating party data structures...", duration: 2000 },
+                { status: "Synthesizing unique entity details...", duration: 2500 },
+                { status: "Drafting preamble and recitals...", duration: 3000 },
+                { status: "Generating purpose-specific core clauses...", duration: 4000 },
+                { status: "Cross-referencing clause dependencies...", duration: 1500 },
+                { status: "Ensuring internal consistency...", duration: 2000 },
+                { status: "Composing formal signature block...", duration: 1500 },
+                { status: "Performing final integrity check...", duration: 1000 },
+                { status: "Compiling final document...", duration: 1000 },
+            ];
+        case 'letter':
+            return [
+                { status: "Initializing formal correspondence module...", duration: 500 },
+                { status: "Selecting communication scenario...", duration: 1500 },
+                { status: "Instantiating sender/recipient data...", duration: 1800 },
+                { status: "Generating unique reference identifiers...", duration: 1000 },
+                { status: "Drafting main body content...", duration: 2500 },
+                { status: "Applying scenario-specific tone...", duration: 1000 },
+                { status: "Formatting formal salutations and closing...", duration: 1000 },
+                { status: "Generating stylized signature block...", duration: 1200 },
+                { status: "Proofreading for grammar and formality...", duration: 1500 },
+                { status: "Compiling final letter...", duration: 500 }
+            ];
+        default:
+            return [];
+    }
+};
 
-export interface ContractVersion {
-  id: number;
-  timestamp: string;
-  markdown: string;
-  versionNumber: number;
-  party1: string;
-  party2: string;
-  contractDate: string; // YYYYMMDD format
-}
+const runProgressSimulation = async (
+    action: 'new' | 'version' | 'final',
+    docType: DocumentType,
+    dispatch: React.Dispatch<Action>
+) => {
+    const steps = getGenerationSteps(action, docType);
+    if (!steps || steps.length === 0) {
+        dispatch({ type: 'UPDATE_PROGRESS', payload: { progress: 50, status: 'Processing...' } });
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return;
+    }
 
-export interface ContractSeries {
-    id: number;
-    name: string;
-    versions: ContractVersion[];
-}
+    const totalDuration = steps.reduce((acc, step) => acc + step.duration, 0);
+    let elapsedTime = 0;
+    
+    for (const step of steps) {
+        const startProgress = (elapsedTime / totalDuration) * 95;
+        dispatch({ type: 'UPDATE_PROGRESS', payload: { progress: startProgress, status: step.status } });
 
-// --- CONSTANTS --- //
+        const microSteps = Math.max(1, Math.floor(step.duration / 50)); // Update interval of 50ms
+        const timePerMicroStep = step.duration / microSteps;
 
-const generationSteps = [
-  "Initializing AI model...",
-  "Generating unique scenario & base template...",
-  "Creating unique party details...",
-  "Drafting contract preamble & background...",
-  "Writing detailed Scope of Work (≥600 words)...",
-  "Populating specification tables...",
-  "Generating Annex A: Technical Specifications...",
-  "Generating Annex B: Detailed Timeline...",
-  "Generating Annex C: Penalties Table...",
-  "Generating Annex D: Payment Schedule...",
-  "Finalizing signature blocks...",
-  "Performing self-correction checks...",
-  "Finalizing document..."
-];
+        for (let i = 0; i < microSteps; i++) {
+            await new Promise(resolve => setTimeout(resolve, timePerMicroStep));
+            elapsedTime += timePerMicroStep;
+            const currentProgress = (elapsedTime / totalDuration) * 95;
+            dispatch({ type: 'UPDATE_PROGRESS', payload: { progress: currentProgress, status: step.status } });
+        }
+    }
+    
+    dispatch({ type: 'UPDATE_PROGRESS', payload: { progress: 95, status: 'Finalizing document stream...' } });
+};
 
 // --- MAIN APP COMPONENT --- //
-
 export default function App() {
-  // --- CORE STATE --- //
-  // Manages all contract series and their versions, acting as the single source of truth.
-  const [contractSeries, setContractSeries] = useState<ContractSeries[]>([]);
-  // Tracks the currently selected series and version for display.
-  const [currentSeriesId, setCurrentSeriesId] = useState<number | null>(null);
-  const [currentVersionId, setCurrentVersionId] = useState<number | null>(null);
-  // Holds the user's selected AI model.
-  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-pro');
+  const [state, dispatch] = useReducer(appReducer, initialState);
+  const { documentSeries, currentSeriesId, currentVersionId, loadingAction, error, progress, progressStatus, lastGeneratedVersionId, bulkProgress } = state;
 
-  // --- UI & ASYNC STATE --- //
-  // Tracks the current loading action ('new' contract or new 'version') to show the correct UI state.
-  const [loadingAction, setLoadingAction] = useState<'new' | 'version' | null>(null);
-  // Stores any error message to be displayed to the user.
-  const [error, setError] = useState<string>('');
-  // State for the loading progress bar simulation.
-  const [progress, setProgress] = useState(0);
-  const [progressStatus, setProgressStatus] = useState<string>('');
+  // --- UI-ONLY STATE --- //
+  const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-pro');
+  const [selectedDocumentType, setSelectedDocumentType] = useState<DocumentType>('contract');
+  const [selectedContractPrompt, setSelectedContractPrompt] = useState<ContractPromptType>('dyno');
+  const [newDocumentQuantity, setNewDocumentQuantity] = useState<number>(1);
+  const [newVersionQuantity, setNewVersionQuantity] = useState<number>(1);
+  const [temperature, setTemperature] = useState<number>(0.8);
+  const [recoverySession, setRecoverySession] = useState<GenerationSession | null>(null);
+  const [feedbackMessage, setFeedbackMessage] = useState<string>('');
   
   // --- REFS --- //
-  const progressIntervalRef = useRef<number | null>(null);
   const contractDisplayRef = useRef<HTMLDivElement>(null);
   
   // --- DERIVED STATE & MEMOS --- //
-
-  // A boolean flag indicating if any generation process is currently active.
   const isLoading = useMemo(() => loadingAction !== null, [loadingAction]);
 
-  // Memoized value of the currently selected contract series object.
   const currentSeries = useMemo(() => {
-    return contractSeries.find(s => s.id === currentSeriesId) || null;
-  }, [contractSeries, currentSeriesId]);
+    return documentSeries.find(s => s.id === currentSeriesId) || null;
+  }, [documentSeries, currentSeriesId]);
 
-  // Memoized values providing the current contract and its immediate predecessor for the diff view.
-  const { currentContract, previousContract } = useMemo(() => {
-    if (!currentSeries) {
-        return { currentContract: null, previousContract: null };
-    }
+  const { currentDocument, previousDocument } = useMemo(() => {
+    if (!currentSeries) return { currentDocument: null, previousDocument: null };
     const current = currentSeries.versions.find(v => v.id === currentVersionId) || null;
-    if (!current || current.versionNumber === 1) {
-        return { currentContract: current, previousContract: null };
-    }
+    if (!current || current.versionNumber === 1) return { currentDocument: current, previousDocument: null };
     const previous = currentSeries.versions.find(v => v.versionNumber === current.versionNumber - 1) || null;
-    return { currentContract: current, previousContract: previous };
+    return { currentDocument: current, previousDocument: previous };
   }, [currentSeries, currentVersionId]);
+  
+  const canGenerateVersion = useMemo(() => {
+    if (!currentDocument) return false;
+    return currentDocument.type === 'contract';
+  }, [currentDocument]);
 
+  const canGenerateFinalVersion = useMemo(() => {
+    if (!currentSeries) return false;
+    return (currentSeries.type === 'contract' || currentSeries.type === 'agreement') && currentSeries.versions.length >= 2;
+  }, [currentSeries]);
 
-  // --- SIDE EFFECTS --- //
+  const lastGeneratedDocument = useMemo(() => {
+    if (!lastGeneratedVersionId) return null;
+    return documentSeries.flatMap(s => s.versions).find(v => v.id === lastGeneratedVersionId) || null;
+  }, [documentSeries, lastGeneratedVersionId]);
 
-  // Load contract history from localStorage on initial component mount and handle data migration.
+  const shouldShowFeedback = useMemo(() => {
+    return !!(lastGeneratedDocument && !lastGeneratedDocument.feedbackSubmitted);
+  }, [lastGeneratedDocument]);
+
+  // --- SIDE EFFECTS (localStorage) --- //
   useEffect(() => {
+    dispatch({ type: 'LOAD_HISTORY_FROM_STORAGE' });
+
     try {
-      const savedHistory = localStorage.getItem('contractHistory');
-      if (savedHistory) {
-        const parsedHistory: any[] = JSON.parse(savedHistory);
-        
-        // This migration ensures contracts saved before the file-naming feature
-        // are updated with parsed details (party names, date) upon first load.
-        const migratedHistory: ContractSeries[] = parsedHistory.map(series => ({
-            ...series,
-            versions: series.versions.map((version: any): ContractVersion => {
-                if ('party1' in version && version.party1 !== 'UnknownParty') {
-                    return version as ContractVersion;
-                }
-                const { party1, party2, contractDate } = parseContractDetails(version.markdown);
-                return { ...version, party1, party2, contractDate };
-            })
-        }));
-
-        setContractSeries(migratedHistory);
-      }
-    } catch (e) {
-      console.error("Failed to load/migrate contract history from localStorage", e);
-      localStorage.removeItem('contractHistory'); // Clear corrupted data
-    }
-
-    // Cleanup progress interval on component unmount to prevent memory leaks.
-    return () => {
-      if (progressIntervalRef.current) {
-        clearInterval(progressIntervalRef.current);
-      }
-    };
-  }, []);
-
-  // --- HELPER & CALLBACK FUNCTIONS --- //
-  
-  /**
-   * Starts a simulated progress bar animation with dynamic status updates.
-   */
-  const startProgressSimulation = useCallback(() => {
-    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-
-    setProgress(0);
-    setProgressStatus(generationSteps[0]);
-    let currentStep = 0;
-    const totalSteps = generationSteps.length;
-    let inPhase2 = false;
-    const phase1Interval = 2500; // 2.5s per step
-    const phase2Interval = 1000; // 1s per increment
-
-    const tick = () => {
-      if (!inPhase2) {
-        // --- PHASE 1: Step-based progress ---
-        currentStep++;
-        if (currentStep < totalSteps) {
-          // Progress up to 80%
-          const progressTarget = Math.round(((currentStep + 1) / totalSteps) * 80);
-          setProgress(progressTarget);
-          setProgressStatus(generationSteps[currentStep]);
-        } else {
-          // Transition to Phase 2
-          inPhase2 = true;
-          setProgress(80);
-          setProgressStatus(generationSteps[totalSteps - 1]);
-          // Clear old interval and start new one for phase 2
-          if(progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-          progressIntervalRef.current = window.setInterval(tick, phase2Interval);
+        const savedSessionJSON = localStorage.getItem('generationSession');
+        if (savedSessionJSON) {
+            const session: GenerationSession = JSON.parse(savedSessionJSON);
+            const oneHour = 60 * 60 * 1000;
+            if (Date.now() - session.startTime < oneHour) setRecoverySession(session);
+            else localStorage.removeItem('generationSession');
         }
-      } else {
-        // --- PHASE 2: Slow crawl ---
-        setProgress(prevProgress => {
-            if (prevProgress < 95) {
-                return prevProgress + 0.25; // Slow increment
-            }
-            // Once it reaches 95, stop the interval
-            if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
-            return 95;
-        });
-      }
-    };
-    
-    progressIntervalRef.current = window.setInterval(tick, phase1Interval);
+    } catch (e) {
+        console.error("Failed to load generation session from localStorage", e);
+    }
   }, []);
 
-  /**
-   * Completes the progress simulation (jumps to 100%) and triggers a callback.
-   * @param callback The function to call after the "100%" state is shown.
-   */
-  const completeProgressSimulation = useCallback((callback: () => void) => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    setProgress(100);
-    setProgressStatus("Document generated successfully!");
-    setTimeout(callback, 500);
-  }, []);
+  // --- CORE GENERATION LOGIC --- //
+  const handleGenerate = useCallback(async (
+    generationType: 'new' | 'version', 
+    quantity: number,
+    docType: DocumentType,
+    baseMarkdown?: string,
+    seriesId?: number,
+  ) => {
+    dispatch({ type: 'START_GENERATION', payload: { action: generationType } });
 
-  /**
-   * Resets the progress bar to its initial state.
-   */
-  const resetProgress = useCallback(() => {
-    if (progressIntervalRef.current) {
-      clearInterval(progressIntervalRef.current);
-      progressIntervalRef.current = null;
-    }
-    setProgress(0);
-    setProgressStatus('');
-  }, []);
-
-  /**
-   * Processes a newly generated markdown string, creating a new contract series and version.
-   * @param markdown The contract content returned from the AI.
-   */
-  const handleNewContractSuccess = (markdown: string) => {
-    const timestamp = new Date().toLocaleString();
-    const { party1, party2, contractDate } = parseContractDetails(markdown);
-    
-    const newVersion: ContractVersion = {
-      id: Date.now(),
-      timestamp,
-      markdown,
-      versionNumber: 1,
-      party1,
-      party2,
-      contractDate
+    const session: GenerationSession = {
+        type: generationType,
+        model: selectedModel,
+        documentType: docType,
+        prompt: docType === 'contract' ? selectedContractPrompt : undefined,
+        originalMarkdown: baseMarkdown,
+        seriesId: seriesId,
+        startTime: Date.now(),
+        temperature,
     };
-    
-    const newSeries: ContractSeries = {
-        id: newVersion.id,
-        name: `Contract ${timestamp}`,
-        versions: [newVersion]
-    };
-
-    const updatedHistory = [newSeries, ...contractSeries];
-    setContractSeries(updatedHistory);
-    localStorage.setItem('contractHistory', JSON.stringify(updatedHistory));
-    setCurrentSeriesId(newSeries.id);
-    setCurrentVersionId(newVersion.id);
-    
-    completeProgressSimulation(() => setLoadingAction(null));
-  };
-
-  /**
-   * Processes a newly generated markdown string, adding it as a new version to the current series.
-   * @param markdown The amended contract content returned from the AI.
-   */
-  const handleNewVersionSuccess = (markdown: string) => {
-    if (!currentSeries) return;
-
-    const { party1, party2, contractDate } = parseContractDetails(markdown);
-    const newVersion: ContractVersion = {
-        id: Date.now(),
-        timestamp: new Date().toLocaleString(),
-        markdown,
-        versionNumber: currentSeries.versions.length + 1,
-        party1,
-        party2,
-        contractDate
-    };
-
-    const updatedSeriesList = contractSeries.map(series => 
-        series.id === currentSeriesId 
-            ? { ...series, versions: [...series.versions, newVersion] } 
-            : series
-    );
-
-    setContractSeries(updatedSeriesList);
-    localStorage.setItem('contractHistory', JSON.stringify(updatedSeriesList));
-    setCurrentVersionId(newVersion.id);
-    
-    completeProgressSimulation(() => setLoadingAction(null));
-  };
-  
-  /**
-   * Handles errors from the AI generation process.
-   * @param error The error object or message.
-   */
-  const handleGenerationError = (error: unknown) => {
-    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
-    setError(`Failed to generate contract: ${errorMessage}`);
-    resetProgress();
-    setLoadingAction(null);
-  };
-  
-  // --- EVENT HANDLERS --- //
-
-  const handleGenerateNewContract = useCallback(async () => {
-    setLoadingAction('new');
-    setError('');
-    startProgressSimulation();
-    try {
-      const markdown = await generateContract(selectedModel);
-      handleNewContractSuccess(markdown);
-    } catch (err) {
-      handleGenerationError(err);
-    }
-  }, [contractSeries, selectedModel, startProgressSimulation]);
-
-  const handleGenerateNewVersion = useCallback(async () => {
-    if (!currentContract) return;
-
-    setLoadingAction('version');
-    setError('');
-    startProgressSimulation();
+    localStorage.setItem('generationSession', JSON.stringify(session));
 
     try {
-        const markdown = await generateAmendedContract(currentContract.markdown, selectedModel);
-        handleNewVersionSuccess(markdown);
-    } catch (err) {
-        handleGenerationError(err);
-    }
-  }, [currentContract, contractSeries, selectedModel, startProgressSimulation]);
+        const config = { temperature };
+        let latestMarkdown = baseMarkdown || '';
+        const generatedMarkdowns: string[] = [];
+        
+        for (let i = 0; i < quantity; i++) {
+            dispatch({ type: 'SET_BULK_PROGRESS', payload: { current: i + 1, total: quantity } });
 
+            const simulationPromise = runProgressSimulation(generationType, docType, dispatch);
+
+            const generationPromise = (async () => {
+                if (generationType === 'new') {
+                    return await generateDocument(selectedModel, docType, selectedContractPrompt, config);
+                } else {
+                    const result = await generateAmendedDocument(latestMarkdown, selectedModel, docType, config);
+                    latestMarkdown = result;
+                    return result;
+                }
+            })();
+
+            const [newMarkdown] = await Promise.all([generationPromise, simulationPromise]);
+            generatedMarkdowns.push(newMarkdown);
+        }
+        
+        dispatch({ type: 'UPDATE_PROGRESS', payload: { progress: 100, status: "Document generated successfully!" } });
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        dispatch({ type: 'GENERATION_SUCCESS', payload: { 
+            type: generationType,
+            markdowns: generatedMarkdowns, 
+            docType,
+            seriesId: seriesId
+        } });
+
+        dispatch({ type: 'END_GENERATION' });
+
+    } catch (err) {
+        dispatch({ type: 'GENERATION_FAILURE', payload: { error: err instanceof Error ? err.message : 'An unknown error occurred.' } });
+    } finally {
+        localStorage.removeItem('generationSession');
+    }
+  }, [selectedModel, selectedDocumentType, selectedContractPrompt, temperature]);
+
+  const handleGenerateNewDocument = () => handleGenerate('new', newDocumentQuantity, selectedDocumentType);
+  const handleGenerateNewVersion = () => {
+    if (currentDocument && currentSeriesId) {
+        handleGenerate('version', newVersionQuantity, currentDocument.type, currentDocument.markdown, currentSeriesId);
+    }
+  };
+
+  const handleGenerateFinalVersion = useCallback(async () => {
+    if (!currentDocument || !currentSeriesId) return;
+
+    dispatch({ type: 'START_GENERATION', payload: { action: 'final' } });
+
+    try {
+        // Pre-process the markdown on the client to remove diff tags for a more reliable finalization.
+        let preCleanedMarkdown = currentDocument.markdown;
+        preCleanedMarkdown = preCleanedMarkdown.replace(/<del>[\s\S]*?<\/del>/g, ''); // Remove deletions
+        preCleanedMarkdown = preCleanedMarkdown.replace(/<\/?ins>/g, ''); // Remove insertion tags
+        preCleanedMarkdown = preCleanedMarkdown.replace(/ +/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+
+        const config = { temperature };
+
+        const finalizationPromise = generateFinalDocument(
+            preCleanedMarkdown, // Pass the pre-cleaned version to the AI
+            selectedModel,
+            currentDocument.type,
+            config
+        );
+
+        const simulationPromise = runProgressSimulation('final', currentDocument.type, dispatch);
+        
+        const [finalMarkdown] = await Promise.all([finalizationPromise, simulationPromise]);
+        
+        dispatch({ type: 'UPDATE_PROGRESS', payload: { progress: 100, status: "Document finalized successfully!" } });
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        dispatch({ type: 'GENERATION_SUCCESS', payload: { 
+            type: 'final',
+            markdowns: [finalMarkdown], 
+            docType: currentDocument.type,
+            seriesId: currentSeriesId
+        }});
+
+        dispatch({ type: 'END_GENERATION' });
+    } catch (err) {
+        dispatch({ type: 'GENERATION_FAILURE', payload: { error: err instanceof Error ? err.message : 'An unknown error occurred.' } });
+    }
+  }, [currentDocument, currentSeriesId, selectedModel, temperature]);
+
+  // --- OTHER EVENT HANDLERS --- //
   const handleDownload = useCallback((format: 'pdf' | 'md' | 'txt') => {
-    if (!currentContract) return;
+    if (!currentDocument) return;
+    const { party1, party2, documentDate } = currentDocument;
 
-    const { party1, party2, contractDate, versionNumber } = currentContract;
-    const versionStr = `V${versionNumber}`;
-    const filename = `${party1}_${party2}_${contractDate}_${versionStr}`;
+    // Reformat date from YYYYMMDD to DD_MM_YYYY for the filename
+    const year = documentDate.substring(0, 4);
+    const month = documentDate.substring(4, 6);
+    const day = documentDate.substring(6, 8);
+    const formattedDate = `${day}_${month}_year}`;
+
+    const filename = `${sanitizeForFilename(party1)}_${sanitizeForFilename(party2)}_${formattedDate}`;
 
     if (format === 'md') {
-      const blob = new Blob([currentContract.markdown], { type: 'text/markdown;charset=utf-8' });
+      const blob = new Blob([currentDocument.markdown], { type: 'text/markdown;charset=utf-t' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
       link.download = `${filename}.md`;
@@ -339,108 +353,108 @@ export default function App() {
       if (element && (window as any).html2pdf) {
         const clonedElement = element.cloneNode(true) as HTMLElement;
         clonedElement.style.maxHeight = 'none';
-        
         const legend = clonedElement.querySelector('.diff-legend');
         if (legend) legend.remove();
-
-        const opt = {
-          margin: 0.5,
-          filename: `${filename}.pdf`,
-          image: { type: 'jpeg', quality: 0.98 },
-          html2canvas: { scale: 2, useCORS: true },
-          jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' }
-        };
-
+        const opt = { margin: 0.5, filename: `${filename}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
         (window as any).html2pdf().from(clonedElement).set(opt).save();
       } else {
-        setError("PDF generation library is not available.");
+        dispatch({ type: 'GENERATION_FAILURE', payload: { error: "PDF generation library is not available." } });
       }
     }
-  }, [currentContract]);
+  }, [currentDocument]);
 
-  const handleSelectSeries = useCallback((seriesId: number) => {
-    const seriesToLoad = contractSeries.find(s => s.id === seriesId);
-    if (seriesToLoad) {
-        setError('');
-        setCurrentSeriesId(seriesId);
-        setCurrentVersionId(seriesToLoad.versions[seriesToLoad.versions.length - 1].id);
+  const handleSelectSeries = useCallback((seriesId: number) => dispatch({ type: 'SET_CURRENT_DOCUMENT', payload: { seriesId } }), []);
+  const handleSelectVersion = useCallback((versionId: number) => dispatch({ type: 'SET_CURRENT_DOCUMENT', payload: { versionId } }), []);
+  const handleDeleteSeries = useCallback((seriesId: number) => {
+    if (window.confirm('Are you sure you want to delete this entire document series? This action cannot be undone.')) {
+        dispatch({ type: 'DELETE_SERIES', payload: { seriesId } });
     }
-  }, [contractSeries]);
-
-  const handleSelectVersion = useCallback((versionId: number) => {
-    setCurrentVersionId(versionId);
+  }, []);
+  const handleClearHistory = useCallback(() => {
+    if (window.confirm('Are you sure you want to delete all document history? This action cannot be undone.')) {
+        dispatch({ type: 'CLEAR_HISTORY' });
+    }
   }, []);
   
-  const handleDeleteSeries = useCallback((seriesId: number) => {
-    setContractSeries(prevSeries => {
-        const updatedHistory = prevSeries.filter(s => s.id !== seriesId);
-        localStorage.setItem('contractHistory', JSON.stringify(updatedHistory));
-        if (currentSeriesId === seriesId) {
-            setCurrentSeriesId(null);
-            setCurrentVersionId(null);
-        }
-        return updatedHistory;
-    });
-  }, [currentSeriesId]);
+  const handleResumeGeneration = useCallback(async () => {
+    if (!recoverySession) return;
+    const { type, originalMarkdown, seriesId, documentType, prompt, model, temperature } = recoverySession;
+    
+    // Set UI state to match session
+    setSelectedModel(model);
+    setSelectedDocumentType(documentType);
+    if(prompt) setSelectedContractPrompt(prompt);
+    setTemperature(temperature);
+    setRecoverySession(null);
 
-  const handleClearHistory = useCallback(() => {
-    if (window.confirm('Are you sure you want to delete all contract history? This action cannot be undone.')) {
-        setContractSeries([]);
-        localStorage.setItem('contractHistory', JSON.stringify([]));
-        setCurrentSeriesId(null);
-        setCurrentVersionId(null);
-    }
+    // Use the generic handler to resume
+    handleGenerate(type, 1, documentType, originalMarkdown, seriesId);
+  }, [recoverySession, handleGenerate]);
+  
+  const handleDiscardSession = useCallback(() => {
+    localStorage.removeItem('generationSession');
+    setRecoverySession(null);
   }, []);
 
-  // --- RENDER LOGIC --- //
+  const handleFeedbackSubmit = useCallback((rating: number, comment: string) => {
+    if (!lastGeneratedVersionId) return;
+    const feedbackData = { versionId: lastGeneratedVersionId, rating, comment, timestamp: new Date().toISOString() };
+    const existingFeedback = JSON.parse(localStorage.getItem('documentFeedback') || '[]');
+    localStorage.setItem('documentFeedback', JSON.stringify([...existingFeedback, feedbackData]));
+    console.log('Feedback Submitted:', feedbackData);
 
+    dispatch({ type: 'SET_FEEDBACK_SUBMITTED', payload: { versionId: lastGeneratedVersionId } });
+    setFeedbackMessage('Thank you for your feedback!');
+    setTimeout(() => setFeedbackMessage(''), 3000);
+  }, [lastGeneratedVersionId]);
+
+  const handleFeedbackDismiss = useCallback(() => {
+    if (!lastGeneratedVersionId) return;
+    dispatch({ type: 'SET_FEEDBACK_SUBMITTED', payload: { versionId: lastGeneratedVersionId } });
+  }, [lastGeneratedVersionId]);
+
+  // --- RENDER LOGIC --- //
   return (
-    <div className="min-h-screen bg-[rgb(244,246,245)] text-gray-800 font-sans flex flex-col">
+    <div className="min-h-screen bg-[#F9F9FB] text-gray-800 font-sans flex flex-col">
+      {recoverySession && (
+          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center backdrop-blur-sm animate-fade-in">
+              <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center transform transition-all animate-fade-in-up">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">Resume Session?</h2>
+                  <p className="text-gray-600 mb-6">Your last session was interrupted. Would you like to continue where you left off?</p>
+                  <div className="flex justify-center gap-4">
+                      <button onClick={handleDiscardSession} className="font-semibold py-2 px-5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 bg-gray-200 text-gray-800 hover:bg-gray-300">Discard</button>
+                      <button onClick={handleResumeGeneration} className="text-white font-semibold py-2 px-5 rounded-md shadow-sm transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 bg-orange-600 hover:bg-orange-700 focus:ring-orange-500">Resume</button>
+                  </div>
+              </div>
+          </div>
+      )}
       <Header />
-      <main className="flex-grow container mx-auto p-4 md:p-8 flex flex-col md:flex-row gap-8">
-        <div className="flex flex-col gap-8 w-full md:w-80 lg:w-96 flex-shrink-0">
-            <NewContractsSidebar
-                series={contractSeries}
-                currentSeriesId={currentSeriesId}
-                onSelectSeries={handleSelectSeries}
-                onDeleteSeries={handleDeleteSeries}
-                onClear={handleClearHistory}
-            />
-            <VersionHistorySidebar
-                series={currentSeries}
-                currentVersionId={currentVersionId}
-                onSelectVersion={handleSelectVersion}
-            />
+      <main className="flex-grow container mx-auto p-4 md:p-6 lg:p-8 flex flex-col md:flex-row gap-6 lg:gap-8">
+        <div className="w-full md:w-80 lg:w-96 flex-shrink-0">
+          <CategorizedSidebar
+            series={documentSeries}
+            currentSeriesId={currentSeriesId}
+            currentVersionId={currentVersionId}
+            onSelectSeries={handleSelectSeries}
+            onSelectVersion={handleSelectVersion}
+            onDeleteSeries={handleDeleteSeries}
+            onClear={handleClearHistory}
+          />
         </div>
         <div className="flex-1 flex flex-col min-w-0">
-            <ControlBar
-                isLoading={isLoading}
-                loadingAction={loadingAction}
-                selectedModel={selectedModel}
-                onModelChange={setSelectedModel}
-                onGenerateNew={handleGenerateNewContract}
-                onGenerateVersion={handleGenerateNewVersion}
-                canGenerateVersion={!!currentContract}
-            />
+            <ControlBar isLoading={isLoading} loadingAction={loadingAction} selectedModel={selectedModel} onModelChange={setSelectedModel} selectedDocumentType={selectedDocumentType} onDocumentTypeChange={setSelectedDocumentType} selectedContractPrompt={selectedContractPrompt} onContractPromptChange={setSelectedContractPrompt} onGenerateNew={handleGenerateNewDocument} onGenerateVersion={handleGenerateNewVersion} canGenerateVersion={canGenerateVersion} onGenerateFinal={handleGenerateFinalVersion} canGenerateFinalVersion={canGenerateFinalVersion} newDocumentQuantity={newDocumentQuantity} onNewDocumentQuantityChange={setNewDocumentQuantity} newVersionQuantity={newVersionQuantity} onNewVersionQuantityChange={setNewVersionQuantity} temperature={temperature} onTemperatureChange={setTemperature} />
           
-            {currentContract && !isLoading && !error && (
+            {currentDocument && !isLoading && !error ? (
+              <>
                 <DownloadBar onDownload={handleDownload} />
-            )}
+                {shouldShowFeedback ? (<FeedbackForm onSubmit={handleFeedbackSubmit} onDismiss={handleFeedbackDismiss} />) : null}
+                {feedbackMessage ? (<div className="text-center p-3 my-4 bg-green-50 text-green-700 rounded-md border border-green-200/80 transition-all duration-300 ease-in-out">{feedbackMessage}</div>) : null}
+              </>
+            ) : null}
 
-            <div className="bg-white rounded-xl shadow-lg p-6 md:p-10 flex-1 min-h-[60vh] border border-gray-200 flex flex-col">
-              <StatusDisplay
-                isLoading={isLoading}
-                error={error}
-                currentContract={currentContract}
-                progress={progress}
-                progressStatus={progressStatus}
-              >
-                <ContractDisplay 
-                  ref={contractDisplayRef} 
-                  markdownContent={currentContract?.markdown || ''}
-                  previousMarkdownContent={previousContract?.markdown}
-                  versionNumber={currentContract?.versionNumber || 0}
-                />
+            <div className="bg-white rounded-lg p-6 md:p-8 flex-1 min-h-[60vh] border border-gray-200/60 flex flex-col">
+              <StatusDisplay isLoading={isLoading} error={error} currentDocument={currentDocument} progress={progress} progressStatus={progressStatus} bulkProgress={bulkProgress}>
+                {currentDocument && currentSeries ? <ContractDisplay ref={contractDisplayRef} title={currentSeries.name} markdownContent={currentDocument.markdown || ''} previousMarkdownContent={previousDocument?.markdown} versionNumber={currentDocument.versionNumber || 0} /> : null}
               </StatusDisplay>
             </div>
         </div>

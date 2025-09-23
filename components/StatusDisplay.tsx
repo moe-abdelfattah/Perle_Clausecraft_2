@@ -1,56 +1,56 @@
 import React from 'react';
 import ProgressBar from './ProgressBar';
-import { ContractIcon, AlertTriangleIcon } from './Icons';
-import { ContractVersion } from '../App';
+import { AlertTriangleIcon, ClausecraftHeroIcon } from './Icons';
+// FIX: Corrected import path for types. Types are defined in state/types.ts, not App.tsx.
+import { DocumentVersion } from '../state/types';
 
 interface StatusDisplayProps {
   isLoading: boolean;
   error: string;
-  currentContract: ContractVersion | null;
+  currentDocument: DocumentVersion | null;
   progress: number;
   progressStatus: string;
+  bulkProgress?: { current: number; total: number; } | null;
   children: React.ReactNode;
 }
 
 const StatusDisplay: React.FC<StatusDisplayProps> = ({
   isLoading,
   error,
-  currentContract,
+  currentDocument,
   progress,
   progressStatus,
+  bulkProgress,
   children
 }) => {
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center">
-        <ProgressBar progress={progress} status={progressStatus} />
-        <p className="mt-6 text-lg text-gray-500">
-          Clausecraft is drafting your document... This may take a few minutes
-        </p>
+      <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <ProgressBar progress={progress} status={progressStatus} bulkProgress={bulkProgress} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center text-orange-600">
-        <AlertTriangleIcon className="w-16 h-16 mb-4" />
-        <h3 className="text-2xl font-bold mb-2 text-gray-900">An Error Occurred</h3>
-        <p className="text-lg">{error}</p>
+      <div className="flex flex-col items-center justify-center h-full text-center p-4">
+        <AlertTriangleIcon className="w-12 h-12 mb-4 text-red-300" />
+        <h3 className="text-xl font-semibold mb-2 text-gray-800">An Error Occurred</h3>
+        <p className="text-gray-600 max-w-md">{error}</p>
       </div>
     );
   }
 
-  if (currentContract) {
+  if (currentDocument) {
     return <>{children}</>;
   }
 
   return (
-    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-      <ContractIcon className="w-24 h-24 mb-4 text-gray-300" />
-      <h2 className="text-3xl font-bold mb-2 text-gray-800">Welcome to Perle Clausecraft</h2>
-      <p className="text-xl">
-        Click "Generate New Contract" to begin or load a contract from the history.
+    <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 p-4">
+      <ClausecraftHeroIcon className="w-20 h-20 mb-6" />
+      <h2 className="text-xl font-semibold mb-1 text-gray-800">Welcome to Perle Clausecraft</h2>
+      <p className="max-w-md text-gray-500 leading-relaxed">
+        Select a document type and click "Generate New" to begin.
       </p>
     </div>
   );

@@ -1,21 +1,56 @@
-
 import { GoogleGenAI } from "@google/genai";
-import { CONTRACT_GENERATION_PROMPT, CONTRACT_AMENDMENT_PROMPT, DYNAMIC_FORMATTING_INSTRUCTIONS } from '../constants';
+import { 
+    CONTRACT_GENERATION_PROMPT, 
+    CONTRACT_AMENDMENT_PROMPT, 
+    CONTRACT_FINALIZATION_PROMPT,
+    CONTRACT_GENERATION_PROMPT_REVO,
+    OFFICIAL_LETTER_GENERATION_PROMPT,
+    OFFICIAL_LETTER_AMENDMENT_PROMPT,
+    OFFICIAL_AGREEMENT_GENERATION_PROMPT,
+    OFFICIAL_AGREEMENT_AMENDMENT_PROMPT
+} from '../constants';
+import { DocumentType, ContractPromptType } from "../state/types";
 
-async function callGemini(prompt: object, model: string): Promise<string> {
-  if (!process.env.API_KEY) {
-    console.error("API_KEY environment variable not set.");
-    throw new Error("API configuration is missing. Please contact support.");
-  }
+let aiInstance: GoogleGenAI | null = null;
 
+function getAiInstance(): GoogleGenAI {
+    if (!aiInstance) {
+        if (!process.env.API_KEY) {
+            console.error("API_KEY environment variable not set.");
+            throw new Error("API configuration is missing. Please contact support.");
+        }
+        aiInstance = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    }
+    return aiInstance;
+}
+
+interface GenerationConfig {
+    temperature?: number;
+    maxOutputTokens?: number;
+}
+
+async function callGemini(prompt: object, model: string, generationConfig: GenerationConfig): Promise<string> {
   try {
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = getAiInstance();
+
+    const config: any = {};
+    if (generationConfig.temperature !== undefined) {
+        config.temperature = generationConfig.temperature;
+    }
+    if (generationConfig.maxOutputTokens !== undefined && generationConfig.maxOutputTokens > 0) {
+        config.maxOutputTokens = generationConfig.maxOutputTokens;
+        if (model.includes('flash')) {
+            config.thinkingConfig = { thinkingBudget: Math.floor(generationConfig.maxOutputTokens / 2) };
+        }
+    }
+    
     const response = await ai.models.generateContent({
         model: model,
         contents: JSON.stringify(prompt),
+        config: Object.keys(config).length > 0 ? config : undefined,
     });
     
-    const text = response.text;
+    let text = response.text;
 
     if (!text) {
         if (response.promptFeedback?.blockReason) {
@@ -26,14 +61,20 @@ async function callGemini(prompt: object, model: string): Promise<string> {
         throw new Error("The AI returned an empty response. This might be due to content safety filters or a temporary service issue. Please try again.");
     }
     
-    return text;
+    const codeBlockRegex = /^```(?:\w+)?\n([\s\S]+?)\n```$/;
+    const match = text.match(codeBlockRegex);
+    if (match && match[1]) {
+        text = match[1];
+    }
+    
+    return text.trim();
+
   } catch (error) {
     console.error("Error during Gemini API call:", error);
     
     let errorMessage = "An unexpected error occurred while communicating with the AI. Please try again.";
 
     if (error instanceof Error) {
-        // Re-throw specific, user-facing errors
         if (error.message.startsWith("The request was blocked") || error.message.startsWith("The AI returned an empty response") || error.message.startsWith("API configuration is missing")) {
             throw error;
         }
@@ -53,29 +94,83 @@ async function callGemini(prompt: object, model: string): Promise<string> {
   }
 }
 
-export async function generateContract(model: string): Promise<string> {
-    // --- DYNAMIC PROMPT INJECTION ---
-    // 1. Create a deep copy of the base prompt to avoid mutation.
-    const dynamicPrompt = JSON.parse(JSON.stringify(CONTRACT_GENERATION_PROMPT));
+export async function generateDocument(
+    model: string, 
+    docType: DocumentType, 
+    promptType: ContractPromptType, 
+    config: GenerationConfig
+): Promise<string> {
+    let promptToSend;
 
-    // 2. Select a random formatting instruction.
-    const randomIndex = Math.floor(Math.random() * DYNAMIC_FORMATTING_INSTRUCTIONS.length);
-    const randomInstruction = DYNAMIC_FORMATTING_INSTRUCTIONS[randomIndex];
-
-    // 3. Inject the dynamic instruction into the core directives.
-    dynamicPrompt.instructions.coreDirectives.push(randomInstruction);
+    switch(docType) {
+        case 'contract':
+            promptToSend = promptType === 'dyno' ? CONTRACT_GENERATION_PROMPT : CONTRACT_GENERATION_PROMPT_REVO;
+            break;
+        case 'letter':
+            promptToSend = OFFICIAL_LETTER_GENERATION_PROMPT;
+            break;
+        case 'agreement':
+            promptToSend = OFFICIAL_AGREEMENT_GENERATION_PROMPT;
+            break;
+        default:
+            throw new Error(`Unknown document type: ${docType}`);
+    }
     
-    // 4. Call the AI with the modified, unique prompt.
-    return callGemini(dynamicPrompt, model);
+    return callGemini(promptToSend, model, config);
 }
 
-export async function generateAmendedContract(originalContractText: string, model: string): Promise<string> {
+export async function generateAmendedDocument(
+    originalDocumentText: string, 
+    model: string, 
+    docType: DocumentType,
+    config: GenerationConfig
+): Promise<string> {
+    let basePrompt;
+    let inputVariableName;
+
+    switch(docType) {
+        case 'contract':
+            basePrompt = CONTRACT_AMENDMENT_PROMPT;
+            inputVariableName = 'originalContractText';
+            break;
+        case 'letter':
+            basePrompt = OFFICIAL_LETTER_AMENDMENT_PROMPT;
+            inputVariableName = 'originalLetterText';
+            break;
+        case 'agreement':
+            basePrompt = OFFICIAL_AGREEMENT_AMENDMENT_PROMPT;
+            inputVariableName = 'originalAgreementText';
+            break;
+        default:
+            throw new Error(`Unknown document type for amendment: ${docType}`);
+    }
+
     const fullPrompt = {
-        ...CONTRACT_AMENDMENT_PROMPT,
+        ...basePrompt,
         input: {
-            ...CONTRACT_AMENDMENT_PROMPT.input,
-            originalContractText: originalContractText
+            ...basePrompt.input,
+            [inputVariableName]: originalDocumentText
         }
     };
-    return callGemini(fullPrompt, model);
+    return callGemini(fullPrompt, model, config);
+}
+
+export async function generateFinalDocument(
+    draftDocumentText: string,
+    model: string,
+    docType: DocumentType,
+    config: GenerationConfig
+): Promise<string> {
+    if (docType !== 'contract' && docType !== 'agreement') {
+        throw new Error(`Document type "${docType}" does not support finalization.`);
+    }
+
+    const fullPrompt = {
+        ...CONTRACT_FINALIZATION_PROMPT,
+        input: {
+            ...CONTRACT_FINALIZATION_PROMPT.input,
+            draftContractText: draftDocumentText
+        }
+    };
+    return callGemini(fullPrompt, model, config);
 }
