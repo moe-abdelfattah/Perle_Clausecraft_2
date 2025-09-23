@@ -7,7 +7,9 @@ import {
     OFFICIAL_LETTER_GENERATION_PROMPT,
     OFFICIAL_LETTER_AMENDMENT_PROMPT,
     OFFICIAL_AGREEMENT_GENERATION_PROMPT,
-    OFFICIAL_AGREEMENT_AMENDMENT_PROMPT
+    OFFICIAL_AGREEMENT_AMENDMENT_PROMPT,
+    DOCUMENT_QUALITY_JUDGE_PROMPT,
+    CORRECTIONAL_GENERATION_PROMPT
 } from '../constants';
 import { DocumentType, ContractPromptType } from "../state/types";
 
@@ -29,7 +31,18 @@ interface GenerationConfig {
     maxOutputTokens?: number;
 }
 
-async function callGemini(prompt: object, model: string, generationConfig: GenerationConfig): Promise<string> {
+interface GeminiCallConfig extends GenerationConfig {
+    responseMimeType?: "application/json" | "text/plain";
+}
+
+interface JudgeVerdict {
+    decision: 'APPROVED' | 'REJECTED';
+    reason: string;
+    errors: { errorCode: string; description: string }[];
+}
+
+
+async function callGemini(prompt: object, model: string, generationConfig: GeminiCallConfig): Promise<string> {
   try {
     const ai = getAiInstance();
 
@@ -42,6 +55,9 @@ async function callGemini(prompt: object, model: string, generationConfig: Gener
         if (model.includes('flash')) {
             config.thinkingConfig = { thinkingBudget: Math.floor(generationConfig.maxOutputTokens / 2) };
         }
+    }
+    if (generationConfig.responseMimeType) {
+        config.responseMimeType = generationConfig.responseMimeType;
     }
     
     const response = await ai.models.generateContent({
@@ -61,10 +77,13 @@ async function callGemini(prompt: object, model: string, generationConfig: Gener
         throw new Error("The AI returned an empty response. This might be due to content safety filters or a temporary service issue. Please try again.");
     }
     
-    const codeBlockRegex = /^```(?:\w+)?\n([\s\S]+?)\n```$/;
-    const match = text.match(codeBlockRegex);
-    if (match && match[1]) {
-        text = match[1];
+    // For non-JSON responses, clean up markdown code blocks if they exist.
+    if (generationConfig.responseMimeType !== 'application/json') {
+        const codeBlockRegex = /^```(?:\w+)?\n([\s\S]+?)\n```$/;
+        const match = text.match(codeBlockRegex);
+        if (match && match[1]) {
+            text = match[1];
+        }
     }
     
     return text.trim();
@@ -94,6 +113,87 @@ async function callGemini(prompt: object, model: string, generationConfig: Gener
   }
 }
 
+async function judgeDocumentQuality(
+    originalGenerationPrompt: object,
+    generatedDocumentMarkdown: string,
+    model: string,
+    config: GenerationConfig
+): Promise<JudgeVerdict> {
+    const judgePrompt = {
+        ...DOCUMENT_QUALITY_JUDGE_PROMPT,
+        input: {
+            originalGenerationPrompt,
+            generatedDocumentMarkdown
+        }
+    };
+
+    const judgeConfig: GeminiCallConfig = {
+        ...config,
+        temperature: 0.1, // Low temp for consistent judging
+        responseMimeType: 'application/json'
+    };
+
+    const responseJson = await callGemini(judgePrompt, model, judgeConfig);
+    try {
+        return JSON.parse(responseJson) as JudgeVerdict;
+    } catch (e) {
+        console.error("Failed to parse AI Judge response:", e);
+        throw new Error("The AI quality judge returned an invalid response. Could not verify document quality.");
+    }
+}
+
+async function generateAndJudge(
+    generationPrompt: object,
+    model: string,
+    config: GenerationConfig
+): Promise<string> {
+    const maxAttempts = 2; // Initial attempt + 1 retry
+    let lastRejectionReason = "No specific reason provided.";
+    let currentPrompt = generationPrompt;
+
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        const generatedMarkdown = await callGemini(currentPrompt, model, config);
+        
+        // The Judge always uses the *original* prompt as the ground truth for quality.
+        const originalPromptForJudging = (attempt > 1 && (currentPrompt as any)?.input?.originalGenerationPrompt) 
+            ? (currentPrompt as any).input.originalGenerationPrompt 
+            : generationPrompt;
+
+        try {
+            const qualityCheck = await judgeDocumentQuality(originalPromptForJudging, generatedMarkdown, model, config);
+            
+            if (qualityCheck.decision === 'APPROVED') {
+                return generatedMarkdown; // Success!
+            } else {
+                lastRejectionReason = qualityCheck.reason;
+                console.warn(`AI Judge rejected document on attempt ${attempt}. Reason: ${lastRejectionReason}`);
+                
+                // If this is not the last attempt, prepare for retry with corrective feedback.
+                if (attempt < maxAttempts) {
+                    currentPrompt = {
+                        ...CORRECTIONAL_GENERATION_PROMPT,
+                        input: {
+                            originalGenerationPrompt: originalPromptForJudging,
+                            errorsToCorrect: {
+                                rejectionReason: qualityCheck.reason,
+                                specificErrors: qualityCheck.errors
+                            }
+                        }
+                    };
+                }
+            }
+        } catch (judgeError) {
+             console.error(`AI Judge failed on attempt ${attempt}:`, judgeError);
+             lastRejectionReason = (judgeError instanceof Error) ? judgeError.message : "Unknown judge failure.";
+             // Break the loop if the judge fails, as we can't get feedback to improve.
+             break;
+        }
+    }
+    
+    throw new Error(`AI quality check failed after ${maxAttempts} attempts. Last known issue: ${lastRejectionReason}`);
+}
+
+
 export async function generateDocument(
     model: string, 
     docType: DocumentType, 
@@ -116,7 +216,7 @@ export async function generateDocument(
             throw new Error(`Unknown document type: ${docType}`);
     }
     
-    return callGemini(promptToSend, model, config);
+    return generateAndJudge(promptToSend, model, config);
 }
 
 export async function generateAmendedDocument(
@@ -152,7 +252,7 @@ export async function generateAmendedDocument(
             [inputVariableName]: originalDocumentText
         }
     };
-    return callGemini(fullPrompt, model, config);
+    return generateAndJudge(fullPrompt, model, config);
 }
 
 export async function generateFinalDocument(
@@ -172,5 +272,5 @@ export async function generateFinalDocument(
             draftContractText: draftDocumentText
         }
     };
-    return callGemini(fullPrompt, model, config);
+    return generateAndJudge(fullPrompt, model, config);
 }

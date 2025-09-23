@@ -16,30 +16,38 @@ const getGenerationSteps = (
     action: 'new' | 'version' | 'final',
     docType: DocumentType
 ) => {
+    // This block represents the multi-stage quality check, including the new self-correction step.
+    const qualityAssuranceSteps = [
+        { status: "Submitting for AI quality review...", duration: 1000 },
+        { status: "AI Judge: Verifying structural integrity...", duration: 1500 },
+        { status: "AI Judge: Checking for placeholders & empty data...", duration: 1500 },
+        { status: "AI Judge: Cross-referencing with prompt directives...", duration: 1500 },
+        { status: "Self-Correction Loop: Applying quality feedback for regeneration...", duration: 2000 },
+        { status: "Final verification passed...", duration: 500 },
+        { status: "Compiling final document...", duration: 1000 },
+    ];
+
     if (action === 'final') {
         return [
             { status: "Parsing document for revision markers...", duration: 1000 },
             { status: "Identifying all <ins> and <del> tags...", duration: 1500 },
             { status: "Merging accepted changes into base text...", duration: 2000 },
-            { status: "Discarding all proposed deletions...", duration: 1000 },
             { status: "Sanitizing text to remove all markers...", duration: 1500 },
             { status: "Re-sequencing clause and paragraph numbering...", duration: 2000 },
-            { status: "Performing final formatting and typography check...", duration: 1500 },
-            { status: "Generating clean, signature-ready version...", duration: 1000 },
+            { status: "Performing final typography check...", duration: 1500 },
+            ...qualityAssuranceSteps,
         ];
     }
     if (action === 'version') {
          return [
             { status: "Parsing original document structure...", duration: 1500 },
-            { status: "Identifying key clauses and definitions...", duration: 2000 },
+            { status: "Identifying key clauses for negotiation...", duration: 2000 },
             { status: "Simulating negotiation strategy for Party Two...", duration: 2500 },
-            { status: "Targeting clauses for strategic amendment...", duration: 3000 },
             { status: "Re-drafting primary legal text...", duration: 4000 },
             { status: "Propagating changes to dependent clauses...", duration: 2500 },
             { status: "Verifying financial and timeline consistency...", duration: 2000 },
-            { status: "Recalculating totals and dates if necessary...", duration: 1500 },
             { status: "Generating diff markers for review...", duration: 1000 },
-            { status: "Compiling complete amended document...", duration: 1000 },
+            ...qualityAssuranceSteps,
         ];
     }
     // action === 'new'
@@ -48,20 +56,12 @@ const getGenerationSteps = (
             return [
                 { status: "Initializing cognitive core...", duration: 500 },
                 { status: "Loading Saudi Arabian legal ontology...", duration: 1500 },
-                { status: "Verifying knowledge base integrity...", duration: 1000 },
-                { status: "Parsing generation scenario...", duration: 800 },
                 { status: "Instantiating party data structures...", duration: 1200 },
                 { status: "Synthesizing unique entity details (CRNs, addresses)...", duration: 1800 },
-                { status: "Cross-validating party information...", duration: 1000 },
                 { status: "Drafting preamble and recitals...", duration: 1500 },
-                { status: "Integrating project background and context...", duration: 1200 },
                 { status: "Constructing core legal framework...", duration: 1000 },
-                { status: "Analyzing 'Scope of Work' requirements...", duration: 1500 },
-                { status: "Generating primary SOW clauses and sub-clauses...", duration: 2500 },
-                { status: "Structuring phased deliverables...", duration: 1000 },
-                { status: "Defining technical specification schema...", duration: 800 },
+                { status: "Generating primary 'Scope of Work' clauses...", duration: 2500 },
                 { status: "Populating specification data matrix...", duration: 2000 },
-                { status: "Validating data constraints and plausibility...", duration: 1000 },
                 { status: "Generating Annex A: Scope of Work...", duration: 800 },
                 { status: "Constructing timeline schema for Annex B...", duration: 800 },
                 { status: "Populating detailed milestone data...", duration: 1500 },
@@ -70,35 +70,27 @@ const getGenerationSteps = (
                 { status: "Calculating financial penalty clauses...", duration: 1200 },
                 { status: "Generating Annex C: Penalties...", duration: 800 },
                 { status: "Composing formal signature block...", duration: 1000 },
-                { status: "Performing final consistency and integrity check...", duration: 1500 },
-                { status: "Compiling final document...", duration: 1000 },
+                ...qualityAssuranceSteps,
             ];
         case 'agreement':
             return [
                 { status: "Initializing agreement synthesis engine...", duration: 500 },
                 { status: "Selecting agreement type (MOU, NDA)...", duration: 1500 },
                 { status: "Instantiating party data structures...", duration: 2000 },
-                { status: "Synthesizing unique entity details...", duration: 2500 },
                 { status: "Drafting preamble and recitals...", duration: 3000 },
                 { status: "Generating purpose-specific core clauses...", duration: 4000 },
-                { status: "Cross-referencing clause dependencies...", duration: 1500 },
-                { status: "Ensuring internal consistency...", duration: 2000 },
                 { status: "Composing formal signature block...", duration: 1500 },
-                { status: "Performing final integrity check...", duration: 1000 },
-                { status: "Compiling final document...", duration: 1000 },
+                ...qualityAssuranceSteps,
             ];
         case 'letter':
             return [
                 { status: "Initializing formal correspondence module...", duration: 500 },
                 { status: "Selecting communication scenario...", duration: 1500 },
                 { status: "Instantiating sender/recipient data...", duration: 1800 },
-                { status: "Generating unique reference identifiers...", duration: 1000 },
                 { status: "Drafting main body content...", duration: 2500 },
-                { status: "Applying scenario-specific tone...", duration: 1000 },
                 { status: "Formatting formal salutations and closing...", duration: 1000 },
                 { status: "Generating stylized signature block...", duration: 1200 },
-                { status: "Proofreading for grammar and formality...", duration: 1500 },
-                { status: "Compiling final letter...", duration: 500 }
+                ...qualityAssuranceSteps,
             ];
         default:
             return [];
@@ -323,15 +315,24 @@ export default function App() {
   // --- OTHER EVENT HANDLERS --- //
   const handleDownload = useCallback((format: 'pdf' | 'md' | 'txt') => {
     if (!currentDocument) return;
-    const { party1, party2, documentDate } = currentDocument;
+    const { party1, party2, documentDate, type } = currentDocument;
 
-    // Reformat date from YYYYMMDD to DD_MM_YYYY for the filename
-    const year = documentDate.substring(0, 4);
-    const month = documentDate.substring(4, 6);
-    const day = documentDate.substring(6, 8);
-    const formattedDate = `${day}_${month}_year}`;
-
-    const filename = `${sanitizeForFilename(party1)}_${sanitizeForFilename(party2)}_${formattedDate}`;
+    let formattedDate: string;
+    
+    // For contracts and agreements, use DD/MM/YY format. For others, use DD_MM_YYYY.
+    if (type === 'contract' || type === 'agreement') {
+        const year = documentDate.substring(2, 4); // Get last two digits for YY
+        const month = documentDate.substring(4, 6);
+        const day = documentDate.substring(6, 8);
+        formattedDate = `${day}/${month}/${year}`;
+    } else {
+        const year = documentDate.substring(0, 4);
+        const month = documentDate.substring(4, 6);
+        const day = documentDate.substring(6, 8);
+        formattedDate = `${day}_${month}_${year}`;
+    }
+    
+    const filename = `${sanitizeForFilename(party1)}_${sanitizeForFilename(party2)}_${sanitizeForFilename(formattedDate)}`;
 
     if (format === 'md') {
       const blob = new Blob([currentDocument.markdown], { type: 'text/markdown;charset=utf-t' });
@@ -349,17 +350,8 @@ export default function App() {
       link.click();
       URL.revokeObjectURL(link.href);
     } else if (format === 'pdf') {
-      const element = contractDisplayRef.current;
-      if (element && (window as any).html2pdf) {
-        const clonedElement = element.cloneNode(true) as HTMLElement;
-        clonedElement.style.maxHeight = 'none';
-        const legend = clonedElement.querySelector('.diff-legend');
-        if (legend) legend.remove();
-        const opt = { margin: 0.5, filename: `${filename}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' } };
-        (window as any).html2pdf().from(clonedElement).set(opt).save();
-      } else {
-        dispatch({ type: 'GENERATION_FAILURE', payload: { error: "PDF generation library is not available." } });
-      }
+      // Trigger the browser's native print dialog
+      window.print();
     }
   }, [currentDocument]);
 
@@ -441,18 +433,22 @@ export default function App() {
             onClear={handleClearHistory}
           />
         </div>
-        <div className="flex-1 flex flex-col min-w-0">
-            <ControlBar isLoading={isLoading} loadingAction={loadingAction} selectedModel={selectedModel} onModelChange={setSelectedModel} selectedDocumentType={selectedDocumentType} onDocumentTypeChange={setSelectedDocumentType} selectedContractPrompt={selectedContractPrompt} onContractPromptChange={setSelectedContractPrompt} onGenerateNew={handleGenerateNewDocument} onGenerateVersion={handleGenerateNewVersion} canGenerateVersion={canGenerateVersion} onGenerateFinal={handleGenerateFinalVersion} canGenerateFinalVersion={canGenerateFinalVersion} newDocumentQuantity={newDocumentQuantity} onNewDocumentQuantityChange={setNewDocumentQuantity} newVersionQuantity={newVersionQuantity} onNewVersionQuantityChange={setNewVersionQuantity} temperature={temperature} onTemperatureChange={setTemperature} />
+        <div className="flex-1 flex flex-col min-w-0 main-content-area-wrapper">
+            <div className="control-bar-container">
+                <ControlBar isLoading={isLoading} loadingAction={loadingAction} selectedModel={selectedModel} onModelChange={setSelectedModel} selectedDocumentType={selectedDocumentType} onDocumentTypeChange={setSelectedDocumentType} selectedContractPrompt={selectedContractPrompt} onContractPromptChange={setSelectedContractPrompt} onGenerateNew={handleGenerateNewDocument} onGenerateVersion={handleGenerateNewVersion} canGenerateVersion={canGenerateVersion} onGenerateFinal={handleGenerateFinalVersion} canGenerateFinalVersion={canGenerateFinalVersion} newDocumentQuantity={newDocumentQuantity} onNewDocumentQuantityChange={setNewDocumentQuantity} newVersionQuantity={newVersionQuantity} onNewVersionQuantityChange={setNewVersionQuantity} temperature={temperature} onTemperatureChange={setTemperature} />
+            </div>
           
             {currentDocument && !isLoading && !error ? (
               <>
-                <DownloadBar onDownload={handleDownload} />
-                {shouldShowFeedback ? (<FeedbackForm onSubmit={handleFeedbackSubmit} onDismiss={handleFeedbackDismiss} />) : null}
+                <div className="download-bar-container">
+                    <DownloadBar onDownload={handleDownload} />
+                </div>
+                {shouldShowFeedback ? (<div className="feedback-form-container"><FeedbackForm onSubmit={handleFeedbackSubmit} onDismiss={handleFeedbackDismiss} /></div>) : null}
                 {feedbackMessage ? (<div className="text-center p-3 my-4 bg-green-50 text-green-700 rounded-md border border-green-200/80 transition-all duration-300 ease-in-out">{feedbackMessage}</div>) : null}
               </>
             ) : null}
 
-            <div className="bg-white rounded-lg p-6 md:p-8 flex-1 min-h-[60vh] border border-gray-200/60 flex flex-col">
+            <div className="bg-white rounded-lg p-6 md:p-8 flex-1 min-h-[60vh] border border-gray-200/60 flex flex-col main-content-area">
               <StatusDisplay isLoading={isLoading} error={error} currentDocument={currentDocument} progress={progress} progressStatus={progressStatus} bulkProgress={bulkProgress}>
                 {currentDocument && currentSeries ? <ContractDisplay ref={contractDisplayRef} title={currentSeries.name} markdownContent={currentDocument.markdown || ''} previousMarkdownContent={previousDocument?.markdown} versionNumber={currentDocument.versionNumber || 0} /> : null}
               </StatusDisplay>

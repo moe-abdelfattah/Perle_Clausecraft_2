@@ -64,6 +64,101 @@
         border-radius: 3px;
         padding: 0 2px;
       }
+
+    </style>
+    <style>
+      /* --- ROBUST NATIVE BROWSER PRINT STYLES --- */
+      @media print {
+        body {
+          background-color: #ffffff !important;
+          margin: 0;
+          padding: 0;
+        }
+
+        /* Hide all UI elements that are not the document content */
+        header, 
+        main > div:first-child, /* Sidebar container */
+        .control-bar-container,
+        .download-bar-container,
+        .feedback-form-container
+        {
+          display: none !important;
+        }
+        
+        /* --- KEY FIX: Dismantle the flexbox layout for printing --- */
+        main,
+        .main-content-area-wrapper,
+        .main-content-area {
+            display: block !important; /* Override flex properties */
+            width: auto !important;
+            height: auto !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            min-height: 0 !important;
+        }
+        
+        /* Force the document display to be fully visible and add print margins */
+        .printable-content {
+          max-height: none !important;
+          overflow: visible !important;
+          padding: 1.5cm !important; /* Add A4-like margins */
+          margin: 0 !important;
+        }
+        
+        /* --- Prose & Formatting Styles for Print --- */
+        .printable-content.prose {
+            font-family: 'Tajawal', sans-serif !important;
+            color: #000 !important;
+            line-height: 1.6;
+        }
+        .printable-content.prose * {
+            font-family: 'Tajawal', sans-serif !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .printable-content .diff-legend { display: none !important; }
+        .printable-content.prose h1 { font-size: 24pt; font-weight: bold; margin-bottom: 20pt; padding-bottom: 8pt; border-bottom: 2px solid #333; }
+        .printable-content.prose h2 { font-size: 18pt; font-weight: bold; color: #111; margin-top: 24pt; margin-bottom: 12pt; border-bottom: 1px solid #888; padding-bottom: 6pt; page-break-after: avoid; }
+        .printable-content.prose h3 { font-size: 14pt; font-weight: bold; color: #222; margin-top: 18pt; margin-bottom: 8pt; page-break-after: avoid; }
+        .printable-content.prose p, .printable-content.prose li { font-size: 12pt; margin-bottom: 10pt; text-align: justify; }
+        .printable-content.prose ul, .printable-content.prose ol { margin-right: 20pt; margin-bottom: 10pt; }
+        .printable-content.prose blockquote { border-right: 3px solid #ccc; padding-right: 15px; color: #555; font-style: italic; }
+        .printable-content.prose table { width: 100%; border-collapse: collapse; margin-top: 12pt; margin-bottom: 12pt; page-break-inside: avoid; }
+        .printable-content.prose th, .printable-content.prose td { border: 1px solid #999; padding: 6pt; font-size: 10pt; text-align: right; }
+        .printable-content.prose thead th { background-color: #EAEAEA !important; font-weight: bold; color: #000 !important; }
+        
+        /* --- KEY FIX: Make amendments invisible for a clean print --- */
+        .printable-content.prose ins { 
+          background-color: transparent !important; 
+          text-decoration: none !important; 
+          color: inherit !important; 
+        }
+        .printable-content.prose del { 
+          display: none !important; 
+        }
+        
+        .printable-content.prose strong { font-weight: bold; }
+        
+        /* --- KEY FIX: Preserve DYNAMIC signature styling --- */
+        .printable-content.prose em {
+            font-style: normal !important;
+            font-size: 18pt !important;
+            letter-spacing: 0.5px;
+            color: #000 !important; /* Ensure signatures are black for printing */
+        }
+        .printable-content.prose .font-signature-aref {
+            font-family: 'Aref Ruqaa Ink', serif !important;
+        }
+        .printable-content.prose .font-signature-lateef {
+            font-family: 'Lateef', serif !important;
+        }
+        .printable-content.prose .font-signature-scheherazade {
+            font-family: 'Scheherazade New', serif !important;
+        }
+      }
     </style>
   <script type="importmap">
 {

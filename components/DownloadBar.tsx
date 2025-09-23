@@ -48,9 +48,9 @@ const DownloadBar: React.FC<DownloadBarProps> = ({ onDownload }) => {
                             <PdfFileIcon className="w-6 h-6 text-red-600" />
                         </div>
                     }
-                    title="PDF Document"
-                    description="For sharing & printing"
-                    ariaLabel="Download as PDF"
+                    title="Print / Save as PDF"
+                    description="Opens print dialog"
+                    ariaLabel="Print or Save as PDF"
                 />
                 <DownloadOption
                     onClick={() => onDownload('md')}

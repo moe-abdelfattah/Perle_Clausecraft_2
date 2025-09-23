@@ -92,7 +92,7 @@ const ContractDisplay = forwardRef<HTMLDivElement, ContractDisplayProps>(({ titl
   }, [markdownContent, previousMarkdownContent, showDiff]);
   
   return (
-    <div ref={ref} dir="rtl" lang="ar" className="font-arabic max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar relative prose prose-lg prose-rtl max-w-none">
+    <div ref={ref} dir="rtl" lang="ar" className="printable-content font-arabic max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar relative prose prose-lg prose-rtl max-w-none">
        {showDiff && (
         <div className="diff-legend mb-4 p-2 bg-white/70 backdrop-blur-sm rounded-md text-xs sticky top-0 z-10 border border-gray-200/60 flex items-center justify-center gap-3 shadow-sm">
           <span className="font-semibold text-gray-600">Changes:</span>

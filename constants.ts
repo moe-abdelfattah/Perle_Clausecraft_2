@@ -11,7 +11,8 @@ const PURE_MARKDOWN_FORMATTING = {
 const SHARED_CORE_DIRECTIVES = [
   "ABSOLUTE RULE - NO H1 TITLE: The application handles the title. Your response MUST begin directly with the preamble paragraph. The generated `projectName` MUST be naturally integrated within the preamble text, NOT used as a standalone H1 title.",
   "Absolute Uniqueness & Auto-Population: All variables (names, dates, figures, etc.) MUST be uniquely auto-populated. No placeholders like `[text]` are allowed.",
-  "Final Output is Markdown Document Only: The entire response must be only the complete document in clean Markdown. Do not wrap in JSON, code fences, or any other metadata."
+  "Final Output is Markdown Document Only: The entire response must be only the complete document in clean Markdown. Do not wrap in JSON, code fences, or any other metadata.",
+  "CRITICAL NAMING CONSTRAINT: Under no circumstances should any generated party, individual, or representative name include the last name 'آل سعود'. This is a strict exclusion."
 ];
 
 const SHARED_SIGNATURE_BLOCK_INSTRUCTION_MARKDOWN_TABLE = {
@@ -55,13 +56,23 @@ export const CONTRACT_GENERATION_PROMPT = {
       {"id": "SA_GOV_CONSTRUCTION_GENERAL_11", "type": "Official Government - General Construction", "keyClauses": ["تسليم الموقع", "الاستلام الابتدائي والنهائي", "المسؤولية عن العيوب", "التأمين"]},
       {"id": "SA_GOV_OM_12", "type": "Official Government - Operation & Maintenance", "keyClauses": ["مؤشرات الأداء الرئيسية (KPIs)", "اتفاقية مستوى الخدمة (SLA)", "جدول الصيانة الوقائية"]},
       {"id": "SA_FRAMEWORK_SUPPLY_07", "type": "Framework Agreement - General Supply", "keyClauses": ["مدة الاتفاقية", "الحد الأعلى للاتفاقية"]},
-      {"id": "SA_GOV_ENG_SUPERVISION_13", "type": "Official Government - Engineering Supervision Services", "keyClauses": ["صلاحيات ومسؤوليات الاستشاري", "المسؤولية المهنية"]}
+      {"id": "SA_GOV_ENG_SUPERVISION_13", "type": "Official Government - Engineering Supervision Services", "keyClauses": ["صلاحيات ومسؤوليات الاستشاري", "المسؤولية المهنية"]},
+      {"id": "PVT_GOODS_SUPPLY_01", "type": "Private Sector - Goods Supply Contract", "keyClauses": ["موضوع العقد", "السعر والشروط المالية", "الضمانات والتأمين", "حل النزاعات"]},
+      {"id": "PVT_MAINTENANCE_02", "type": "Private Sector - Maintenance Contract", "keyClauses": ["البند الأول: موضوع العقد", "البند الثاني: مدة العقد", "البند الثالث: قيمة العقد", "البند السادس: التأمينات والضمانات"]},
+      {"id": "PVT_IT_SUPPLY_INSTALL_03", "type": "Private Sector - IT Hardware and Software Supply and Installation Contract", "keyClauses": ["ثانياً - محل العقد", "ثالثاً - التزامات الطرف الثاني", "خامساً: التزامات الطرف الأول", "سادساً : مدة العقد", "عاشراً - حل الخلافات"]},
+      {"id": "PVT_BUILDING_MATERIALS_SUPPLY_04", "type": "Private Sector - Building Materials Supply Contract", "keyClauses": ["نطاق العمل", "شروط الدفع", "مدة العقد", "تسوية النزاعات"]},
+      {"id": "PVT_PARTNERSHIP_05", "type": "Private Sector - Partnership Contract", "keyClauses": ["المادة الاولي : الأهداف والغايات", "المادة الثانية : المسؤوليات والتزامات الطرفين", "المادة الثالثة : توزيع الأرباح والخسائر", "المادة الرابعة : مدة الشراكة"]},
+      {"id": "PVT_CORPORATE_PARTNERSHIP_06", "type": "Private Sector - Corporate Partnership Contract", "keyClauses": ["الأهداف الاستراتيجية", "المساهمات والمسؤوليات", "الملكية والحوكمة", "الجوانب المالية والضريبية"]},
+      {"id": "SA_GOV_CONSULTING_SERVICES_07", "type": "Saudi Government - Consulting Services Contract", "keyClauses": ["الغرض من العقد", "قيمة العقد", "مدة العقد", "الشروط المالية"]},
+      {"id": "PVT_GENERAL_SUPPLY_08", "type": "Private Sector - General Supply Contract", "keyClauses": ["المادة الأولى: نطاق العقد", "المادة الثالثة: الجودة والمعايير", "المادة الخامسة: الشروط المالية", "المادة السابعة: الضمانات والتعويضات"]},
+      {"id": "SA_GOV_GENERAL_SUPPLY_09", "type": "Saudi Government - General Supply Contract", "keyClauses": ["الغرض من العقد", "قيمة العقد", "مدة العقد", "الشروط المالية"]},
+      {"id": "PVT_EQUIPMENT_MAINTENANCE_10", "type": "Private Sector - Equipment Maintenance Contract", "keyClauses": ["نطاق الخدمات", "جدول الصيانة والإجراءات", "التزامات الأطراف", "المدة والإنهاء"]}
     ]
   },
   "dynamicVariableGeneration": {
     "steps": [
       { "action": "Generate Scenario & Base", "instruction": "Randomly select a `baseTemplateId` from knowledgeBase. Generate a plausible, unique, one-sentence `contractScenario`." },
-      { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full, synthetic Saudi Arabian details (names, types, addresses, representatives)." },
+      { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full, synthetic Saudi Arabian details (names, types, addresses, representatives). CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
       { "action": "Generate Unique Project Details", "instruction": "Create a unique `projectName` and a 2-3 sentence `projectBackground` for the preamble." },
       { "action": "Generate Dynamic Financials", "instruction": "Generate a unique `contractValueNumeric` and plausible percentages for guarantees, payments, and penalties." },
       { "action": "Generate Dual-Calendar Dates & Location", "instruction": "Generate a random valid future date in Hijri and Gregorian formats, plus `dayOfWeek` and a random Saudi `signingLocation`." }
@@ -108,7 +119,7 @@ export const CONTRACT_GENERATION_PROMPT_REVO = {
     "contractBlueprint": { /* Blueprint content remains unchanged as it's dynamic input */ },
     "dynamicVariableGeneration": {
       "steps": [
-        { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full synthetic details for a Saudi context." },
+        { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full synthetic details for a Saudi context. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
         { "action": "Generate Unique Project Details", "instruction": "Create a unique `projectName` and `projectBackground` based on the `contractBlueprint` theme." },
         { "action": "Generate Dynamic Financials", "instruction": "Generate a unique `contractValueNumeric` and related financial details." },
         { "action": "Generate Dual-Calendar Dates & Location", "instruction": "Generate a valid future date (Hijri/Gregorian), `dayOfWeek`, and `signingLocation`." }
@@ -190,13 +201,22 @@ export const OFFICIAL_LETTER_GENERATION_PROMPT = {
       { "id": "TERMINATION", "type": "إنهاء عقد العمل" },
       { "id": "TRANSFER", "type": "خطاب نقل" },
       { "id": "INFO_REQUEST", "type": "Request for Information" },
-      { "id": "MEETING_INVITE", "type": "Invitation to a Formal Meeting" }
+      { "id": "MEETING_INVITE", "type": "Invitation to a Formal Meeting" },
+      { "id": "USER_SECTOR_CHANGE_REQUEST", "type": "نموذج تغيير قطاع المستخدم" },
+      { "id": "SYSTEM_ADMIN_AUTHORITY_REQUEST", "type": "نموذج طلب صلاحية مدير النظام" },
+      { "id": "RELEASE_FINANCIAL_RESERVATION_REQUEST", "type": "نموذج فك الحجوزات المالية لأوامر الشراء" },
+      { "id": "REMOVE_USER_AUTHORITY_REQUEST", "type": "نموذج طلب - إزالة صلاحية (حكومي خدمي)" },
+      { "id": "GOVERNMENT_VEHICLE_SYSTEM_ACCESS_REQUEST", "type": "نموذج طلب صلاحية لنظام حصر المركبات الحكومية" },
+      { "id": "REOPEN_PURCHASE_ORDER_REQUEST", "type": "نموذج طلب إعادة فتح أمر شراء - السوق الإلكتروني" },
+      { "id": "REPORTS_INDICATORS_SERVICE_ACCESS_REQUEST", "type": "نموذج طلب منح / إزالة صلاحية لخدمة التقارير والمؤشرات على منصة اعتماد" },
+      { "id": "PURCHASE_ORDER_CANCELLATION_REQUEST", "type": "نموذج إلغاء أمر الشراء - سوق اعتماد الإلكتروني" },
+      { "id": "FINANCIAL_REFUND_REQUEST_BANK_GUARANTEE", "type": "نموذج طلب استرداد المقابل المالي الضمان البنكي" }
     ]
   },
   "dynamicVariableGeneration": {
     "steps": [
       { "action": "Generate Scenario", "instruction": "Randomly select a `scenario` from `knowledgeBase`." },
-      { "action": "Generate Unique Parties", "instruction": "Create unique Sender and Recipient with full synthetic details (org, name, title, address)." },
+      { "action": "Generate Unique Parties", "instruction": "Create unique Sender and Recipient with full synthetic details (org, name, title, address). CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
       { "action": "Generate Unique Details", "instruction": "Based on scenario, generate a unique `subjectLine`, `referenceNumber`, and other necessary data (salary, dates, etc.)." },
       { "action": "Generate Dual-Calendar Dates", "instruction": "Generate a valid date in Hijri and Gregorian formats." }
     ]
@@ -269,13 +289,22 @@ export const OFFICIAL_AGREEMENT_GENERATION_PROMPT = {
         { "id": "PROFIT_SHARE", "arabicName": "اتفاقية شراكة على نسبة أرباح" },
         { "id": "MOU", "arabicName": "مذكرة تفاهم" },
         { "id": "JV", "arabicName": "اتفاقية مشروع مشترك" },
-        { "id": "LEASE", "arabicName": "عقد إيجار تجاري" }
+        { "id": "LEASE", "arabicName": "عقد إيجار تجاري" },
+        { "id": "NON_DISCLOSURE", "arabicName": "اتفاقية عدم الإفصاح" },
+        { "id": "EGOV_ECORP_MOBILE_SERVICE", "arabicName": "إتفاقية الخدمات الإلكترونية الحكومية / إي كورب موباي" },
+        { "id": "NON_DISCLOSURE_GEA", "arabicName": "اتفاقية عدم الإفصاح" },
+        { "id": "DIVIDENDS_PAYMENT", "arabicName": "اتفاقية صرف أرباح" },
+        { "id": "NON_DISCLOSURE_NHC", "arabicName": "اتفاقية عدم الإفصاح" },
+        { "id": "ECOLLECTION_SERVICE", "arabicName": "اتفاقية الحساب التجميعي" },
+        { "id": "CREDIT_FACILITIES", "arabicName": "اتفاقية تسهيلات" },
+        { "id": "CORPORATE_ACCOUNT_OPENING", "arabicName": "إتفاقية فتح حساب جار للعملاء من الشركات" },
+        { "id": "NON_DISCLOSURE_MONSHAAT", "arabicName": "اتفاقية عدم إفصاح" }
       ]
     },
     "dynamicVariableGeneration": {
       "steps": [
         { "action": "Select Agreement Type", "instruction": "Randomly select an `agreementType` from `knowledgeBase`." },
-        { "action": "Generate Unique Parties", "instruction": "Create two unique parties ('الطرف الأول', 'الطرف الثاني') with full synthetic details." },
+        { "action": "Generate Unique Parties", "instruction": "Create two unique parties ('الطرف الأول', 'الطرف الثاني') with full synthetic details. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
         { "action": "Generate Unique Details", "instruction": "Based on `agreementType`, generate relevant core details (e.g., for NDA: `purposeOfDisclosure`; for Service Agreement: `scopeOfService`)." },
         { "action": "Generate Dates & Term", "instruction": "Generate a unique `effectiveDate` (Hijri/Gregorian) and a plausible `term` for the agreement." }
       ]
@@ -316,6 +345,85 @@ export const OFFICIAL_AGREEMENT_AMENDMENT_PROMPT = {
     "input": { "variableName": "originalAgreementText" },
     "outputFormatting": PURE_MARKDOWN_FORMATTING
 };
+
+// --- AI JUDGE & SELF-CORRECTION PROMPTS --- //
+export const DOCUMENT_QUALITY_JUDGE_PROMPT = {
+  "promptDetails": {
+    "title": "AI Quality Control Judge for Legal Documents",
+    "version": "1.0 - JSON Output Only",
+    "objective": "Analyze a generated legal document against its original generation prompt's rules and provide a structured JSON verdict on its quality."
+  },
+  "instructions": {
+    "roleAndContext": "You are an AI Quality Control Judge. Your task is to meticulously analyze a generated Arabic legal document and determine if it meets ALL the quality criteria from its original generation prompt. Your response MUST be a single, clean JSON object and nothing else.",
+    "coreDirectives": [
+      "Analyze the `generatedDocumentMarkdown` based *only* on the rules specified in the `originalGenerationPrompt`.",
+      "Your verdict must be strict. If even one critical rule is violated, the decision must be 'REJECTED'.",
+      "The final output MUST be a valid JSON object matching the `outputSchema`."
+    ]
+  },
+  "input": {
+    "originalGenerationPrompt": "The full JSON prompt that was used to generate the document.",
+    "generatedDocumentMarkdown": "The Markdown text of the document to be judged."
+  },
+  "qualityCriteria": [
+    { "check": "No Placeholders", "rule": "The document must not contain any placeholder text like `[...]`, `[text]`, or empty table cells." },
+    { "check": "No H1 Title", "rule": "The document must begin directly with a preamble or content, not a main H1 title (e.g., `# Contract Title`)." },
+    { "check": "Correct Signature Format", "rule": "A signature block must be present and formatted correctly according to the prompt's instructions (e.g., using Markdown tables, specific styling like asterisks)." },
+    { "check": "Structural Integrity", "rule": "For contracts, check if mandatory annexes are present and if the overall structure aligns with the prompt." },
+    { "check": "Data Completeness", "rule": "All tables and lists must be fully populated with plausible, non-empty data." },
+    { "check": "Formatting", "rule": "The document must be in clean, valid Markdown without any leftover HTML tags." }
+  ],
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "decision": { "type": "string", "enum": ["APPROVED", "REJECTED"] },
+      "reason": { "type": "string", "description": "A brief, one-sentence explanation for the decision." },
+      "errors": {
+        "type": "array",
+        "description": "A list of specific errors found. This array MUST be empty if the decision is 'APPROVED'.",
+        "items": {
+          "type": "object",
+          "properties": {
+            "errorCode": { "type": "string", "enum": ["CONTAINS_PLACEHOLDERS", "MISSING_SIGNATURE_BLOCK", "EMPTY_TABLES", "INCORRECT_START", "INSUFFICIENT_DETAIL", "FORMATTING_ERROR", "MISSING_ANNEXES"] },
+            "description": { "type": "string", "description": "A detailed description of the specific error found." }
+          },
+          "required": ["errorCode", "description"]
+        }
+      }
+    },
+    "required": ["decision", "reason", "errors"]
+  }
+};
+
+export const CORRECTIONAL_GENERATION_PROMPT = {
+  "promptDetails": {
+    "title": "Self-Correcting Document Generation AI",
+    "version": "1.0 - Markdown Output",
+    "objective": "Re-generate a legal document, correcting specific errors identified by a quality control judge."
+  },
+  "instructions": {
+    "roleAndContext": "You are a legal document generation AI undergoing a self-correction cycle. Your previous attempt was rejected for quality reasons. Your new task is to generate the document again, strictly following the original prompt while paying special attention to correcting the errors listed below.",
+    "coreDirectives": [
+      "1. Adhere to the `originalGenerationPrompt` for all content, structure, and formatting requirements.",
+      "2. **CRITICAL:** Fix the specific `errorsToCorrect` listed. Do not repeat these mistakes.",
+      "3. The final output must be only the complete, corrected document in clean Markdown."
+    ]
+  },
+  "input": {
+    "originalGenerationPrompt": "The full JSON prompt that was used for the failed attempt.",
+    "errorsToCorrect": {
+      "rejectionReason": "The high-level reason for rejection.",
+      "specificErrors": [
+        {
+          "errorCode": "...",
+          "description": "..."
+        }
+      ]
+    }
+  },
+  "outputFormatting": PURE_MARKDOWN_FORMATTING
+};
+
 
 // DEPRECATED: This is no longer needed as prompts have been simplified.
 export const DYNAMIC_FORMATTING_INSTRUCTIONS: string[] = [];
