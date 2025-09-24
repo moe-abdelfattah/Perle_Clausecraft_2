@@ -12,12 +12,13 @@ const SHARED_CORE_DIRECTIVES = [
   "ABSOLUTE RULE - NO H1 TITLE: The application handles the title. Your response MUST begin directly with the preamble paragraph. The generated `projectName` MUST be naturally integrated within the preamble text, NOT used as a standalone H1 title.",
   "Absolute Uniqueness & Auto-Population: All variables (names, dates, figures, etc.) MUST be uniquely auto-populated. No placeholders like `[text]` are allowed.",
   "Final Output is Markdown Document Only: The entire response must be only the complete document in clean Markdown. Do not wrap in JSON, code fences, or any other metadata.",
-  "CRITICAL NAMING CONSTRAINT: Under no circumstances should any generated party, individual, or representative name include the last name 'آل سعود'. This is a strict exclusion."
+  "CRITICAL NAMING CONSTRAINT: Under no circumstances should any generated party, individual, or representative name include the last name 'آل سعود'. This is a strict exclusion.",
+  "LANGUAGE FIDELITY: The entire document, including all generated names, must be in Arabic. Do not translate or transliterate any Arabic names into English."
 ];
 
 const SHARED_SIGNATURE_BLOCK_INSTRUCTION_MARKDOWN_TABLE = {
   "section": "Final Signature Block",
-  "instruction": "At the very end, generate a '### التوقيعات' heading with a two-column Markdown table. Left column for 'الطرف الأول', right for 'الطرف الثاني'. Each cell must contain the party's full legal name, representative's name, title, and signature line. **CRITICAL:** The entire signature line, including the label 'التوقيع:' and the name, MUST be wrapped in single asterisks (*التوقيع: Full Name*). The name after 'الاسم:' MUST be plain text. Structure:\n\n### التوقيعات\n\n| الطرف الأول | الطرف الثاني |\n| :--- | :--- |\n| **الاسم:** [Full Name 1] | **الاسم:** [Full Name 2] |\n| **المنصب:** [Title 1] | **المنصب:** [Title 2] |\n| *التوقيع: [Full Name 1]* | *التوقيع: [Full Name 2]* |"
+  "instruction": "At the very end, generate a '### التوقيعات' heading with a two-column Markdown table. Left column for 'الطرف الأول', right for 'الطرف الثاني'. Each cell must contain the party's full legal name, representative's name, title, and signature line. **CRITICAL:** The signature line must consist of the plain text label 'التوقيع:' followed by the representative's full name wrapped in single asterisks for styling (e.g., التوقيع: *Full Name*). The name after 'الاسم:' MUST be plain text. Structure:\n\n### التوقيعات\n\n| الطرف الأول | الطرف الثاني |\n| :--- | :--- |\n| **الاسم:** [Full Name 1] | **الاسم:** [Full Name 2] |\n| **المنصب:** [Title 1] | **المنصب:** [Title 2] |\n| التوقيع: *[Full Name 1]* | التوقيع: *[Full Name 2]* |"
 };
 
 // --- MAIN GENERATION PROMPTS ---
@@ -34,7 +35,7 @@ export const CONTRACT_GENERATION_PROMPT = {
       ...SHARED_CORE_DIRECTIVES,
       "Mandatory Length and Detail: Contract content must equate to a minimum of 5 standard pages, achieved through a detailed 'Scope of Work' and fully generated Annexes.",
       "CRITICAL TABLE RULE: All tables MUST be fully populated with unique, plausible data using Markdown syntax. No empty cells.",
-      "Self-Correction Mandate: Before output, verify all tables are filled with meaningful, context-specific data."
+      "Self-Correction Mandate: Before output, perform a final review for typographical errors, grammatical correctness, and consistency. Ensure all tables are filled with meaningful, context-specific data."
     ]
   },
    "selfChecklist": {
@@ -72,7 +73,7 @@ export const CONTRACT_GENERATION_PROMPT = {
   "dynamicVariableGeneration": {
     "steps": [
       { "action": "Generate Scenario & Base", "instruction": "Randomly select a `baseTemplateId` from knowledgeBase. Generate a plausible, unique, one-sentence `contractScenario`." },
-      { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full, synthetic Saudi Arabian details (names, types, addresses, representatives). CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
+      { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full, synthetic Saudi Arabian details (names, types, addresses, representatives). Representatives should sometimes include professional titles like 'المهندس' or 'الدكتورة' as part of their full name. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
       { "action": "Generate Unique Project Details", "instruction": "Create a unique `projectName` and a 2-3 sentence `projectBackground` for the preamble." },
       { "action": "Generate Dynamic Financials", "instruction": "Generate a unique `contractValueNumeric` and plausible percentages for guarantees, payments, and penalties." },
       { "action": "Generate Dual-Calendar Dates & Location", "instruction": "Generate a random valid future date in Hijri and Gregorian formats, plus `dayOfWeek` and a random Saudi `signingLocation`." }
@@ -119,7 +120,7 @@ export const CONTRACT_GENERATION_PROMPT_REVO = {
     "contractBlueprint": { /* Blueprint content remains unchanged as it's dynamic input */ },
     "dynamicVariableGeneration": {
       "steps": [
-        { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full synthetic details for a Saudi context. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
+        { "action": "Generate Unique Parties", "instruction": "Create two unique parties with full synthetic details for a Saudi context. Representatives should sometimes include professional titles like 'المهندس' or 'الدكتورة' as part of their full name. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
         { "action": "Generate Unique Project Details", "instruction": "Create a unique `projectName` and `projectBackground` based on the `contractBlueprint` theme." },
         { "action": "Generate Dynamic Financials", "instruction": "Generate a unique `contractValueNumeric` and related financial details." },
         { "action": "Generate Dual-Calendar Dates & Location", "instruction": "Generate a valid future date (Hijri/Gregorian), `dayOfWeek`, and `signingLocation`." }
@@ -157,7 +158,7 @@ export const CONTRACT_AMENDMENT_PROMPT = {
 export const CONTRACT_FINALIZATION_PROMPT = {
   "promptDetails": {
     "title": "Legal Document Finalization & Re-formatting AI",
-    "version": "3.2 - Markdown Only (Optimized)",
+    "version": "3.3 - Markdown Only (Optimized)",
     "objective": "Take a pre-cleaned draft of an Arabic legal document and produce a perfectly clean, final version with corrected numbering and formatting in Pure Markdown."
   },
   "instructions": {
@@ -165,6 +166,7 @@ export const CONTRACT_FINALIZATION_PROMPT = {
     "coreDirectives": [
       "PRIMARY GOAL - RE-NUMBER & RE-FORMAT: Your most important task is to scan the entire document and correct all clause, section, and list numbering to be perfectly sequential. Fix any awkward spacing or formatting issues that may have resulted from automated text merging.",
       "MAINTAIN INTEGRITY: Do not add new legal content or change the existing text. Your role is purely structural and cosmetic.",
+      "STRICT NON-ADDITION RULE: The provided text is the complete and final source of truth. Do not add any new clauses, sentences, or information that is not present in the input text. Do not re-introduce content that might have been present in older versions. Your job is ONLY to format and number the provided text.",
       "FALLBACK CLEANUP: As a safety measure, aggressively remove any lingering revision markers like `<ins>`, `<del>`, or `~~` that might have been missed. The final output must be completely clean.",
       "Final Output is Markdown Document Only: Your entire response must be the complete, finalized contract in clean Markdown. No commentary."
     ]
@@ -176,7 +178,7 @@ export const CONTRACT_FINALIZATION_PROMPT = {
 export const OFFICIAL_LETTER_GENERATION_PROMPT = {
   "promptDetails": {
     "title": "Dynamic Official Letter Generator",
-    "version": "2.4 - Markdown Only (Stylized & Robust)",
+    "version": "2.5 - Markdown Only (Stylized & Robust)",
     "objective": "Generate a unique, professional Arabic official letter in Pure Markdown with a stylized signature."
   },
   "instructions": {
@@ -216,7 +218,7 @@ export const OFFICIAL_LETTER_GENERATION_PROMPT = {
   "dynamicVariableGeneration": {
     "steps": [
       { "action": "Generate Scenario", "instruction": "Randomly select a `scenario` from `knowledgeBase`." },
-      { "action": "Generate Unique Parties", "instruction": "Create unique Sender and Recipient with full synthetic details (org, name, title, address). CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
+      { "action": "Generate Unique Parties", "instruction": "Create unique Sender and Recipient with full synthetic details (org, name, title, address). Representatives should sometimes include professional titles like 'المهندس' or 'الدكتورة' as part of their full name. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
       { "action": "Generate Unique Details", "instruction": "Based on scenario, generate a unique `subjectLine`, `referenceNumber`, and other necessary data (salary, dates, etc.)." },
       { "action": "Generate Dual-Calendar Dates", "instruction": "Generate a valid date in Hijri and Gregorian formats." }
     ]
@@ -228,7 +230,7 @@ export const OFFICIAL_LETTER_GENERATION_PROMPT = {
       "Body MUST be standard Markdown.",
       {
         "element": "Final Signature Block",
-        "instruction": "After the closing, generate the signature block. First, include the plain text name and title. Below that, generate the stylized signature. CRITICAL: The stylized signature MUST be on two separate lines with a paragraph break (a blank line) between them. The first line MUST be '*التوقيع:*' and the second line MUST be the representative's name, also wrapped in single asterisks. Follow this exact Markdown structure:\n\n**الاسم:** [Full Name]\n**المنصب:** [Title]\n\n*التوقيع:*\n\n*[Full Name]*"
+        "instruction": "After the closing, generate the signature block. First, include the plain text name and title. Below that, generate the stylized signature. CRITICAL: The signature block must have the label 'التوقيع:' on its own line in plain text, followed by a blank line (paragraph break), and then the representative's full name on a new line, wrapped in single asterisks for styling. Follow this exact Markdown structure:\n\n**الاسم:** [Full Name]\n**المنصب:** [Title]\n\nالتوقيع:\n\n*[Full Name]*"
       }
     ],
     "scenarioBasedBodyGeneration": {
@@ -246,7 +248,7 @@ export const OFFICIAL_LETTER_GENERATION_PROMPT = {
 export const OFFICIAL_LETTER_AMENDMENT_PROMPT = {
     "promptDetails": {
       "title": "Intelligent Official Letter Amendment Generator",
-      "version": "3.3 - Markdown Only (Stylized & Robust)",
+      "version": "3.4 - Markdown Only (Stylized & Robust)",
       "objective": "Intelligently amend an existing Arabic official letter with plausible changes in Pure Markdown."
     },
     "instructions": {
@@ -254,7 +256,7 @@ export const OFFICIAL_LETTER_AMENDMENT_PROMPT = {
       "coreDirectives": [
         "Analyze and Amend: Introduce 2-3 logical, realistic amendments (e.g., change a date, update a reference number, add a clarification).",
         "Preserve Core Identity: Do not change the sender, recipient, or fundamental subject. It must be a clear revision.",
-        "CRITICAL SIGNATURE FORMAT: The signature block format MUST be preserved or corrected. It must show the plain text name and title, followed by the stylized signature on two separate lines separated by a blank line (paragraph break). The first stylized line must be '*التوقيع:*' and the second '*[Full Name]*', with each line individually wrapped in single asterisks. Example format:\n\n**الاسم:** [Name]\n**المنصب:** [Title]\n\n*التوقيع:*\n\n*[Name]*",
+        "CRITICAL SIGNATURE FORMAT: The signature block format MUST be preserved or corrected. It must show the plain text name and title. The signature part must have the label 'التوقيع:' on its own line in plain text, followed by a blank line (paragraph break), and then the representative's full name on a new line wrapped in single asterisks for styling. Example format:\n\n**الاسم:** [Name]\n**المنصب:** [Title]\n\nالتوقيع:\n\n*[Name]*",
         "Final Output is Markdown Document Only: Your response must be only the complete, amended letter in clean Markdown."
       ]
     },
@@ -279,7 +281,7 @@ export const OFFICIAL_AGREEMENT_GENERATION_PROMPT = {
       "rules": [
         "1. Final Check - No H1 Title: Did I add a `# Title` at the start? If yes, I MUST DELETE it. The response must start with the preamble paragraph.",
         "2. Are all variables auto-populated with unique data, with no placeholders left?",
-        "3. Signature Styling Check: Is the signature line in the table (e.g., 'التوقيع: ...') correctly wrapped in single asterisks like *this* for styling? If not, I MUST add them."
+        "3. Signature Styling Check: Is the signature line in the table (e.g., 'التوقيع: *Full Name*') correctly formatted with the label in plain text and the name in asterisks? If not, I MUST fix it."
       ]
     },
     "knowledgeBase": {
@@ -304,7 +306,7 @@ export const OFFICIAL_AGREEMENT_GENERATION_PROMPT = {
     "dynamicVariableGeneration": {
       "steps": [
         { "action": "Select Agreement Type", "instruction": "Randomly select an `agreementType` from `knowledgeBase`." },
-        { "action": "Generate Unique Parties", "instruction": "Create two unique parties ('الطرف الأول', 'الطرف الثاني') with full synthetic details. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
+        { "action": "Generate Unique Parties", "instruction": "Create two unique parties ('الطرف الأول', 'الطرف الثاني') with full synthetic details. Representatives should sometimes include professional titles like 'المهندس' or 'الدكتورة' as part of their full name. CRITICAL: Use a wide and diverse variety of common Saudi and Arabic first names for representatives, such as 'محمد', 'عبدالله', 'فيصل', 'سلطان', 'نورة', 'فاطمة', 'سارة'. Avoid frequently repeating the same names like 'خالد' across generations." },
         { "action": "Generate Unique Details", "instruction": "Based on `agreementType`, generate relevant core details (e.g., for NDA: `purposeOfDisclosure`; for Service Agreement: `scopeOfService`)." },
         { "action": "Generate Dates & Term", "instruction": "Generate a unique `effectiveDate` (Hijri/Gregorian) and a plausible `term` for the agreement." }
       ]
@@ -330,7 +332,7 @@ export const OFFICIAL_AGREEMENT_GENERATION_PROMPT = {
 export const OFFICIAL_AGREEMENT_AMENDMENT_PROMPT = {
     "promptDetails": {
       "title": "Intelligent Official Agreement Amendment Generator",
-      "version": "4.1 - Markdown Only (Optimized)",
+      "version": "4.2 - Markdown Only (Optimized)",
       "objective": "Intelligently amend an existing Arabic agreement with plausible negotiation changes in Pure Markdown."
     },
     "instructions": {
@@ -338,7 +340,7 @@ export const OFFICIAL_AGREEMENT_AMENDMENT_PROMPT = {
       "coreDirectives": [
         "Analyze and Amend with Strategy: Introduce logical amendments relevant to the agreement type that favor Party Two (e.g., for NDA, narrow 'Confidential Information'; for Service Agreement, adjust payment schedule).",
         "Preserve Core Identity: Do not change fundamental parties or purpose. The changes should reflect a natural negotiation.",
-        "CRITICAL SIGNATURE FORMAT: The signature block format MUST be preserved or corrected. It must be a two-column Markdown table under a '### التوقيعات' heading. The entire signature line, including 'التوقيع:' and the name, must be wrapped in single asterisks (*التوقيع: Full Name*). The name after 'الاسم:' must be plain text. Verify this format is correct in the final output.",
+        "CRITICAL SIGNATURE FORMAT: The signature block format MUST be preserved or corrected. It must be a two-column Markdown table under a '### التوقيعات' heading. The signature line must consist of the plain text label 'التوقيع:' followed by the representative's full name wrapped in single asterisks for styling (e.g., التوقيع: *Full Name*). The name after 'الاسم:' must be plain text. Verify this format is correct in the final output.",
         "Final Output is Markdown Document Only: Your response must be only the complete, amended agreement in clean Markdown. No commentary."
       ]
     },

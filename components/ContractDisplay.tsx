@@ -11,12 +11,12 @@ interface ContractDisplayProps {
 }
 
 const signatureColors = [
-  '#0D47A1', // Dark Blue
-  '#004D40', // Dark Green
-  '#B71C1C', // Dark Red
-  '#4A148C', // Dark Purple
-  '#3E2723', // Dark Brown
-  '#1A237E', // Indigo
+  '#00E5FF', // Neon Blue
+  '#818cf8', // indigo-400
+  '#f472b6', // pink-400
+  '#a78bfa', // violet-400
+  '#4ade80', // green-400
+  '#fbbf24', // amber-400
 ];
 
 const signatureFonts = [
@@ -48,11 +48,10 @@ const ContractDisplay = forwardRef<HTMLDivElement, ContractDisplayProps>(({ titl
 
   const tableHeaderColor = useMemo(() => {
     const headerColors = [
-      'bg-slate-100', 'bg-stone-100', 'bg-red-100', 'bg-orange-100', 
-      'bg-amber-100', 'bg-yellow-100', 'bg-lime-100', 'bg-green-100', 
-      'bg-emerald-100', 'bg-teal-100', 'bg-cyan-100', 'bg-sky-100', 
-      'bg-blue-100', 'bg-indigo-100', 'bg-violet-100', 'bg-purple-100', 
-      'bg-fuchsia-100', 'bg-pink-100', 'bg-rose-100'
+      'bg-gray-800/20', 'bg-gray-900/30',
+      'bg-cyan-950/40', 'bg-cyan-900/30',
+      'bg-teal-950/40', 'bg-teal-900/30',
+      'bg-slate-900/40',
     ];
     return headerColors[Math.floor(Math.random() * headerColors.length)];
   }, [markdownContent]);
@@ -92,17 +91,18 @@ const ContractDisplay = forwardRef<HTMLDivElement, ContractDisplayProps>(({ titl
   }, [markdownContent, previousMarkdownContent, showDiff]);
   
   return (
-    <div ref={ref} dir="rtl" lang="ar" className="printable-content font-arabic max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar relative prose prose-lg prose-rtl max-w-none">
+    <div ref={ref} dir="rtl" lang="ar" className="printable-content font-arabic max-h-[70vh] overflow-y-auto pr-4 custom-scrollbar relative prose prose-lg prose-rtl max-w-none prose-invert">
+       <h1 className="text-3xl font-bold mb-6 pb-4 border-b border-gray-700 text-right">{title}</h1>
        {showDiff && (
-        <div className="diff-legend mb-4 p-2 bg-white/70 backdrop-blur-sm rounded-md text-xs sticky top-0 z-10 border border-gray-200/60 flex items-center justify-center gap-3 shadow-sm">
-          <span className="font-semibold text-gray-600">Changes:</span>
+        <div className="diff-legend mb-4 p-2 bg-black/60 backdrop-blur-sm rounded-sm text-xs sticky top-0 z-10 border border-[var(--border-color)] flex items-center justify-center gap-4">
+          <span className="font-semibold text-gray-400 uppercase tracking-wider">Legend:</span>
           <div className="flex items-center gap-1.5">
-             <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(249, 115, 22, 0.15)', border: '1px solid rgba(249, 115, 22, 0.3)' }}></span>
-             <span className="text-gray-500">Added</span>
+             <span className="w-3 h-3" style={{ backgroundColor: 'rgba(0, 229, 255, 0.1)', border: '1px solid rgba(0, 229, 255, 0.3)' }}></span>
+             <span className="text-gray-400">Added</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)' }}></span>
-            <span className="text-gray-500">Removed</span>
+            <span className="w-3 h-3" style={{ backgroundColor: 'rgba(244, 63, 94, 0.1)', border: '1px solid rgba(244, 63, 94, 0.3)' }}></span>
+            <span className="text-gray-400">Removed</span>
           </div>
         </div>
       )}
@@ -110,11 +110,11 @@ const ContractDisplay = forwardRef<HTMLDivElement, ContractDisplayProps>(({ titl
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeRaw]}
         components={{
-          h1: ({node, ...props}) => <h1 className="text-3xl font-bold text-gray-900 mb-6 pb-4 border-b border-gray-300 text-right" {...props} />,
-          h2: ({node, ...props}) => <h2 className="text-2xl font-semibold text-gray-800 mt-8 mb-4 pb-2 border-b border-gray-200/80 text-right text-orange-700" {...props} />,
-          h3: ({node, ...props}) => <h3 className="text-xl font-semibold text-gray-700 mt-6 mb-3 text-right" {...props} />,
-          p: ({node, ...props}) => <p className="mb-5 text-base leading-relaxed text-gray-600 text-right" {...props} />,
-          strong: ({node, ...props}) => <strong className="font-semibold text-gray-800" {...props} />,
+          h1: ({node, ...props}) => <h1 className="text-3xl font-bold mb-6 pb-4 border-b border-gray-700 text-right" {...props} />,
+          h2: ({node, ...props}) => <h2 className="text-2xl font-semibold mt-8 mb-4 pb-2 border-b border-gray-800 text-right text-[var(--accent-color)]" {...props} />,
+          h3: ({node, ...props}) => <h3 className="text-xl font-semibold mt-6 mb-3 text-right" {...props} />,
+          p: ({node, ...props}) => <p className="mb-5 text-base leading-relaxed text-right" {...props} />,
+          strong: ({node, ...props}) => <strong className="font-semibold" {...props} />,
           em: ({node, ...props}) => {
               const color = signatureStyles.colors[signatureIndexRef.current % 2];
               signatureIndexRef.current += 1;
@@ -126,11 +126,11 @@ const ContractDisplay = forwardRef<HTMLDivElement, ContractDisplayProps>(({ titl
                   />
               );
           },
-          blockquote: ({node, ...props}) => <blockquote className="pr-4 border-r-4 border-gray-200 text-gray-500 italic text-right" {...props} />,
-          table: ({node, ...props}) => <div className="overflow-x-auto my-6"><table className="min-w-full border border-gray-300 text-sm" {...props} /></div>,
+          blockquote: ({node, ...props}) => <blockquote className="pr-4 border-r-4 border-gray-700 italic text-right" {...props} />,
+          table: ({node, ...props}) => <div className="overflow-x-auto my-6"><table className="min-w-full border border-gray-700 text-sm" {...props} /></div>,
           thead: ({node, ...props}) => <thead className={tableHeaderColor} {...props} />,
-          th: ({node, ...props}) => <th className="p-3 font-semibold text-right border border-gray-300 text-gray-700 text-right" {...props} />,
-          td: ({node, ...props}) => <td className="p-3 border border-gray-300 text-right" {...props} />,
+          th: ({node, ...props}) => <th className="p-3 font-semibold text-right border border-gray-700 text-gray-200 text-right" {...props} />,
+          td: ({node, ...props}) => <td className="p-3 border border-gray-700 text-right" {...props} />,
         }}
       >
         {contentToRender}

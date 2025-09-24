@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo, useReducer } from 'react';
 import { generateDocument, generateAmendedDocument, generateFinalDocument } from './services/geminiService';
 import { sanitizeForFilename } from './utils/documentParser';
+import { playClickSound } from './utils/uiUtils';
 import Header from './components/Header';
 import ContractDisplay from './components/ContractDisplay';
 import CategorizedSidebar from './components/DocumentsSidebar';
@@ -8,6 +9,9 @@ import ControlBar from './components/ControlBar';
 import DownloadBar from './components/DownloadBar';
 import StatusDisplay from './components/StatusDisplay';
 import FeedbackForm from './components/FeedbackForm';
+import CodeMatrixBackground from './components/CodeMatrixBackground';
+import StartupScreen from './components/StartupScreen';
+import OnboardingTour from './components/OnboardingTour'; // New component
 import { appReducer, initialState } from './state/appReducer';
 import type { Action, BulkProgress, DocumentSeries, DocumentVersion, GenerationSession, DocumentType, ContractPromptType } from './state/types';
 
@@ -136,6 +140,9 @@ export default function App() {
   const { documentSeries, currentSeriesId, currentVersionId, loadingAction, error, progress, progressStatus, lastGeneratedVersionId, bulkProgress } = state;
 
   // --- UI-ONLY STATE --- //
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isExitingStartup, setIsExitingStartup] = useState(false);
+  const [audioUnlocked, setAudioUnlocked] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>('gemini-2.5-pro');
   const [selectedDocumentType, setSelectedDocumentType] = useState<DocumentType>('contract');
   const [selectedContractPrompt, setSelectedContractPrompt] = useState<ContractPromptType>('dyno');
@@ -144,6 +151,8 @@ export default function App() {
   const [temperature, setTemperature] = useState<number>(0.8);
   const [recoverySession, setRecoverySession] = useState<GenerationSession | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
   
   // --- REFS --- //
   const contractDisplayRef = useRef<HTMLDivElement>(null);
@@ -182,7 +191,7 @@ export default function App() {
     return !!(lastGeneratedDocument && !lastGeneratedDocument.feedbackSubmitted);
   }, [lastGeneratedDocument]);
 
-  // --- SIDE EFFECTS (localStorage) --- //
+  // --- SIDE EFFECTS (localStorage, Startup, Onboarding) --- //
   useEffect(() => {
     dispatch({ type: 'LOAD_HISTORY_FROM_STORAGE' });
 
@@ -198,6 +207,55 @@ export default function App() {
         console.error("Failed to load generation session from localStorage", e);
     }
   }, []);
+  
+  const unlockAndPlayLoadSound = useCallback(() => {
+    if (audioUnlocked) return; // Only unlock once
+
+    const unlock = (sound: HTMLAudioElement | null) => {
+        if (sound) {
+            // A common way to unlock audio context. Play and immediately pause.
+            const playPromise = sound.play();
+            if (playPromise !== undefined) {
+                playPromise.then(() => {
+                    sound.pause();
+                    sound.currentTime = 0;
+                }).catch(() => { /* This can fail if another sound is already trying to play. It's okay. */ });
+            }
+        }
+    };
+    
+    const loadSound = document.getElementById('load-sound') as HTMLAudioElement;
+    const clickSound = document.getElementById('click-sound') as HTMLAudioElement;
+
+    // Unlock both sounds
+    unlock(loadSound);
+    unlock(clickSound);
+    setAudioUnlocked(true);
+    
+    // Now, actually play the load sound for the transition.
+    if (loadSound) {
+        loadSound.volume = 0.4;
+        loadSound.currentTime = 0;
+        const playPromise = loadSound.play();
+        if(playPromise !== undefined) {
+            playPromise.catch(e => console.warn("Could not play load sound on transition:", e));
+        }
+    }
+  }, [audioUnlocked]);
+
+  const handleEnterApp = useCallback(() => {
+    setIsExitingStartup(true);
+    unlockAndPlayLoadSound();
+
+    setTimeout(() => {
+      setIsInitializing(false); // Remove startup screen from DOM after animation
+      const hasCompletedTour = localStorage.getItem('onboardingComplete');
+      if (!hasCompletedTour) {
+          // A small delay for the main UI to animate in before starting the tour.
+          setTimeout(() => setShowOnboarding(true), 500);
+      }
+    }, 500); // Wait for fade-out animation to complete
+  }, [unlockAndPlayLoadSound]);
 
   // --- CORE GENERATION LOGIC --- //
   const handleGenerate = useCallback(async (
@@ -312,27 +370,31 @@ export default function App() {
     }
   }, [currentDocument, currentSeriesId, selectedModel, temperature]);
 
+  // --- ONBOARDING HANDLERS --- //
+  const handleNextOnboardingStep = () => setOnboardingStep(prev => prev + 1);
+  const handleEndOnboarding = () => {
+      setShowOnboarding(false);
+      localStorage.setItem('onboardingComplete', 'true');
+  };
+
   // --- OTHER EVENT HANDLERS --- //
   const handleDownload = useCallback((format: 'pdf' | 'md' | 'txt') => {
     if (!currentDocument) return;
-    const { party1, party2, documentDate, type } = currentDocument;
 
-    let formattedDate: string;
+    const { documentDate, type, party1, subject } = currentDocument;
+
+    const datePart = documentDate; // YYYYMMDD format
     
-    // For contracts and agreements, use DD/MM/YY format. For others, use DD_MM_YYYY.
-    if (type === 'contract' || type === 'agreement') {
-        const year = documentDate.substring(2, 4); // Get last two digits for YY
-        const month = documentDate.substring(4, 6);
-        const day = documentDate.substring(6, 8);
-        formattedDate = `${day}/${month}/${year}`;
+    const typePart = type.charAt(0).toUpperCase() + type.slice(1);
+
+    let namePart = '';
+    if (type === 'letter' && subject && subject !== 'Unknown') {
+        namePart = subject;
     } else {
-        const year = documentDate.substring(0, 4);
-        const month = documentDate.substring(4, 6);
-        const day = documentDate.substring(6, 8);
-        formattedDate = `${day}_${month}_${year}`;
+        namePart = party1;
     }
-    
-    const filename = `${sanitizeForFilename(party1)}_${sanitizeForFilename(party2)}_${sanitizeForFilename(formattedDate)}`;
+
+    const filename = `${typePart}-${datePart}-${sanitizeForFilename(namePart)}`;
 
     if (format === 'md') {
       const blob = new Blob([currentDocument.markdown], { type: 'text/markdown;charset=utf-t' });
@@ -369,6 +431,7 @@ export default function App() {
   }, []);
   
   const handleResumeGeneration = useCallback(async () => {
+    playClickSound();
     if (!recoverySession) return;
     const { type, originalMarkdown, seriesId, documentType, prompt, model, temperature } = recoverySession;
     
@@ -384,6 +447,7 @@ export default function App() {
   }, [recoverySession, handleGenerate]);
   
   const handleDiscardSession = useCallback(() => {
+    playClickSound();
     localStorage.removeItem('generationSession');
     setRecoverySession(null);
   }, []);
@@ -406,16 +470,24 @@ export default function App() {
   }, [lastGeneratedVersionId]);
 
   // --- RENDER LOGIC --- //
+  if (isInitializing) {
+    return <StartupScreen isExiting={isExitingStartup} onEnter={handleEnterApp} />;
+  }
+  
   return (
-    <div className="min-h-screen bg-[#F9F9FB] text-gray-800 font-sans flex flex-col">
+    <div className="min-h-screen text-gray-300 flex flex-col animate-fade-in">
+      <CodeMatrixBackground />
+      {showOnboarding && <OnboardingTour step={onboardingStep} onNext={handleNextOnboardingStep} onEnd={handleEndOnboarding} />}
       {recoverySession && (
-          <div className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center backdrop-blur-sm animate-fade-in">
-              <div className="bg-white rounded-lg shadow-xl p-8 max-w-md w-full text-center transform transition-all animate-fade-in-up">
-                  <h2 className="text-xl font-bold text-gray-900 mb-2">Resume Session?</h2>
-                  <p className="text-gray-600 mb-6">Your last session was interrupted. Would you like to continue where you left off?</p>
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm animate-fade-in">
+              <div className="hud-panel p-8 max-w-md w-full text-center">
+                  <div className="corner-bottom-left"></div>
+                  <div className="corner-bottom-right"></div>
+                  <h2 className="text-xl font-bold text-gray-100 mb-2">Resume Session?</h2>
+                  <p className="text-gray-400 mb-6">Your last session was interrupted. Would you like to continue where you left off?</p>
                   <div className="flex justify-center gap-4">
-                      <button onClick={handleDiscardSession} className="font-semibold py-2 px-5 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400 bg-gray-200 text-gray-800 hover:bg-gray-300">Discard</button>
-                      <button onClick={handleResumeGeneration} className="text-white font-semibold py-2 px-5 rounded-md shadow-sm transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 bg-orange-600 hover:bg-orange-700 focus:ring-orange-500">Resume</button>
+                      <button onClick={handleDiscardSession} className="btn-animated font-semibold py-2 px-5 transition-colors focus:outline-none bg-gray-700 text-gray-200 hover:bg-gray-600">Discard</button>
+                      <button onClick={handleResumeGeneration} className="btn-animated text-white font-semibold py-2 px-5 transition-colors duration-200 ease-in-out focus:outline-none bg-[var(--accent-color)] hover:bg-[var(--accent-color-dark)]">Resume</button>
                   </div>
               </div>
           </div>
@@ -433,7 +505,7 @@ export default function App() {
             onClear={handleClearHistory}
           />
         </div>
-        <div className="flex-1 flex flex-col min-w-0 main-content-area-wrapper">
+        <div className="flex-1 flex flex-col min-w-0 main-content-area-wrapper" data-tour-id="content-area">
             <div className="control-bar-container">
                 <ControlBar isLoading={isLoading} loadingAction={loadingAction} selectedModel={selectedModel} onModelChange={setSelectedModel} selectedDocumentType={selectedDocumentType} onDocumentTypeChange={setSelectedDocumentType} selectedContractPrompt={selectedContractPrompt} onContractPromptChange={setSelectedContractPrompt} onGenerateNew={handleGenerateNewDocument} onGenerateVersion={handleGenerateNewVersion} canGenerateVersion={canGenerateVersion} onGenerateFinal={handleGenerateFinalVersion} canGenerateFinalVersion={canGenerateFinalVersion} newDocumentQuantity={newDocumentQuantity} onNewDocumentQuantityChange={setNewDocumentQuantity} newVersionQuantity={newVersionQuantity} onNewVersionQuantityChange={setNewVersionQuantity} temperature={temperature} onTemperatureChange={setTemperature} />
             </div>
@@ -444,11 +516,13 @@ export default function App() {
                     <DownloadBar onDownload={handleDownload} />
                 </div>
                 {shouldShowFeedback ? (<div className="feedback-form-container"><FeedbackForm onSubmit={handleFeedbackSubmit} onDismiss={handleFeedbackDismiss} /></div>) : null}
-                {feedbackMessage ? (<div className="text-center p-3 my-4 bg-green-50 text-green-700 rounded-md border border-green-200/80 transition-all duration-300 ease-in-out">{feedbackMessage}</div>) : null}
+                {feedbackMessage ? (<div className="text-center p-3 my-4 bg-blue-900/50 text-cyan-300 rounded-md border border-blue-500/30 transition-all duration-300 ease-in-out">{feedbackMessage}</div>) : null}
               </>
             ) : null}
 
-            <div className="bg-white rounded-lg p-6 md:p-8 flex-1 min-h-[60vh] border border-gray-200/60 flex flex-col main-content-area">
+            <div className="hud-panel p-6 md:p-8 flex-1 min-h-[60vh] flex flex-col main-content-area">
+              <div className="corner-bottom-left"></div>
+              <div className="corner-bottom-right"></div>
               <StatusDisplay isLoading={isLoading} error={error} currentDocument={currentDocument} progress={progress} progressStatus={progressStatus} bulkProgress={bulkProgress}>
                 {currentDocument && currentSeries ? <ContractDisplay ref={contractDisplayRef} title={currentSeries.name} markdownContent={currentDocument.markdown || ''} previousMarkdownContent={previousDocument?.markdown} versionNumber={currentDocument.versionNumber || 0} /> : null}
               </StatusDisplay>

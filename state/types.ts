@@ -11,6 +11,7 @@ export interface DocumentVersion {
   party1: string; // Party1, Sender, etc.
   party2: string; // Party2, Recipient, etc.
   documentDate: string; // YYYYMMDD format
+  subject: string; // Subject for letters, 'Unknown' otherwise
   feedbackSubmitted?: boolean;
   type: DocumentType;
 }

@@ -31,6 +31,7 @@ function handleNewDocumentSuccess(state: AppState, markdowns: string[], docType:
             party1,
             party2,
             documentDate,
+            subject,
             feedbackSubmitted: false,
             type: docType,
         };
@@ -86,7 +87,7 @@ function handleNewVersionSuccess(state: AppState, markdowns: string[], targetSer
     if (!seriesToUpdate) return state;
 
     const newVersions: DocumentVersion[] = markdowns.map((markdown, index) => {
-        const { party1, party2, documentDate } = parseDocumentDetails(markdown, seriesToUpdate.type);
+        const { party1, party2, documentDate, subject } = parseDocumentDetails(markdown, seriesToUpdate.type);
         return {
             id: Date.now() + index,
             timestamp: new Date().toLocaleString(),
@@ -95,6 +96,7 @@ function handleNewVersionSuccess(state: AppState, markdowns: string[], targetSer
             party1,
             party2,
             documentDate,
+            subject,
             feedbackSubmitted: false,
             type: seriesToUpdate.type,
         };

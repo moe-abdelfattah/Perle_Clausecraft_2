@@ -114,12 +114,12 @@ export const ClausecraftHeroIcon: React.FC<React.SVGProps<SVGSVGElement>> = (pro
     <svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" {...props}>
         <defs>
             <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style={{ stopColor: '#F97316', stopOpacity: 1 }} />
-                <stop offset="100%" style={{ stopColor: '#EF4444', stopOpacity: 1 }} />
+                <stop offset="0%" style={{ stopColor: '#00E5FF', stopOpacity: 1 }} />
+                <stop offset="100%" style={{ stopColor: '#00B8CC', stopOpacity: 1 }} />
             </linearGradient>
         </defs>
         <path d="M25 10 H 75 C 80.5228 10 85 14.4772 85 20 V 80 C 85 85.5228 80.5228 90 75 90 H 25 C 19.4772 90 15 85.5228 15 80 V 20 C 15 14.4772 19.4772 10 25 10 Z" fill="#E5E7EB"/>
-        <path d="M30 20 H 70 C 72.7614 20 75 22.2386 75 25 V 75 C 75 77.7614 72.7614 80 70 80 H 30 C 27.2386 80 25 77.7614 25 75 V 25 C 25 22.2386 27.2386 20 30 20 Z" fill="#FB923C" fillOpacity="0.5"/>
+        <path d="M30 20 H 70 C 72.7614 20 75 22.2386 75 25 V 75 C 75 77.7614 72.7614 80 70 80 H 30 C 27.2386 80 25 77.7614 25 75 V 25 C 25 22.2386 27.2386 20 30 20 Z" fill="#00E5FF" fillOpacity="0.5"/>
         <path d="M20 5 L 70 5 C 75.5228 5 80 9.47715 80 15 L 80 65 C 80 70.5228 75.5228 75 70 75 L 20 75 C 14.4772 75 10 70.5228 10 65 L 10 15 C 10 9.47715 14.4772 5 20 5 Z" fill="url(#grad1)"/>
         <path d="M22 20 H 50 M 22 30 H 65 M 22 40 H 58 M 22 50 H 45 M 22 60 H 65" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
     </svg>
